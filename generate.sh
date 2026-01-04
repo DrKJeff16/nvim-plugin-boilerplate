@@ -120,7 +120,7 @@ _rename_annotations() {
     while true; do
         _prompt_data "Rename your module class annotations (default: \`MyPlugin\`): " 0
 
-        if [[ $DATA =~ ^[a-zA-Z][a-zA-Z0-9_\.]+[a-zA-Z0-9_]$ ]]; then
+        if [[ $DATA =~ ^[a-zA-Z][a-zA-Z0-9_\.]*[a-zA-Z0-9_]$ ]]; then
             break
         fi
 
@@ -139,7 +139,7 @@ _rename_modules() {
         while true; do
             _prompt_data "Rename your Lua module (default: \`my-plugin\`): " 0
 
-            if [[ $DATA =~ ^[a-zA-Z_][a-zA-Z0-9_\-]+[a-zA-Z0-9_]$ ]]; then
+            if [[ $DATA =~ ^[a-zA-Z_][a-zA-Z0-9_\-]*[a-zA-Z0-9_]$ ]]; then
                 break
             fi
 
@@ -236,9 +236,21 @@ _select_indentation() {
     return 0
 }
 
+_remove_script() {
+    if ! _file_readable_writeable ./generate.sh; then
+        return 1
+    fi
+
+    rm ./generate.sh
+    return $?
+}
+
 _rename_modules || die 1 "Couldn't rename module file structure!"
 _rename_annotations || die 1 "Couldn't rename module annotations!"
 _select_indentation || die 1 "Unable to set indentation!"
 
-exit 0
+
+_remove_script || die 1
+
+die 0
 # vim: set ts=4 sts=4 sw=4 et ai si sta:
