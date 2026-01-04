@@ -1,4 +1,4 @@
-# nvim-plugin-template
+# nvim-plugin-boilerplate
 
 > [!IMPORTANT]
 > **This was NOT AI-generated!**
