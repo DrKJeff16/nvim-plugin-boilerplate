@@ -3,8 +3,8 @@
 > [!IMPORTANT]
 > **This was NOT AI-generated!**
 
-An annotated Neovim Lua plugin template with `pre-commit`, StyLua, selene,
-and GitHub actions included from the start.
+An annotated Neovim Lua plugin template with `pre-commit`, StyLua and `selene` configs,
+with some useful GitHub actions included.
 
 Not to be confused with [`ellisonleao/nvim-plugin-template`](https://github.com/ellisonleao/nvim-plugin-template)!
 
