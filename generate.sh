@@ -336,19 +336,28 @@ _remove_script() {
         return 1
     fi
 
+    if ! _yn "Self-destruct this script? [Y/n]: " 1 "Y"; then
+        return 0
+    fi
+
     rm ./generate.sh
     return $?
 }
 
-_rename_module || die 1 "Couldn't rename module file structure!"
-_rename_annotations || die 1 "Couldn't rename module annotations!"
+_main() {
+    _rename_module || die 1 "Couldn't rename module file structure!"
+    _rename_annotations || die 1 "Couldn't rename module annotations!"
 
-_select_indentation || die 1 "Unable to set indentation!"
-_select_line_size || die 1 "Unable to set StyLua line size!"
+    _select_indentation || die 1 "Unable to set indentation!"
+    _select_line_size || die 1 "Unable to set StyLua line size!"
 
-_remove_health_file || die 1 "Unable to (not) remove health file!"
+    _remove_health_file || die 1 "Unable to (not) remove health file!"
 
-_remove_script || die 1
+    _remove_script || die 1
 
-die 0
+    die 0
+}
+
+_main
+
 # vim: set ts=4 sts=4 sw=4 et ai si sta:
