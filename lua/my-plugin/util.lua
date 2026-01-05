@@ -12,14 +12,53 @@ local M = {}
 --- ---
 ---@return boolean win32
 function M.is_windows()
-  return vim.fn.has('win32') == 1
+  return M.vim_has('win32')
+end
+
+---Get rid of all duplicates in the given list.
+---
+---If the list is empty it'll just return it as-is.
+---
+---If the data passed to the function is not a table,
+---an error will be raised.
+--- ---
+---@param T any[]
+---@return any[] NT
+function M.dedup(T)
+  M.validate({ T = { T, { 'table' } } })
+
+  if vim.tbl_isempty(T) then
+    return T
+  end
+
+  local NT = {} ---@type any[]
+  for _, v in ipairs(T) do
+    local not_dup = false
+    if M.is_type('table', v) then
+      not_dup = not vim.tbl_contains(NT, function(val)
+        return vim.deep_equal(val, v)
+      end, { predicate = true })
+    else
+      not_dup = not vim.list_contains(NT, v)
+    end
+    if not_dup then
+      table.insert(NT, v)
+    end
+  end
+  return NT
+end
+
+---@param feature string
+---@return boolean has
+function M.vim_has(feature)
+  return vim.fn.has(feature) == 1
 end
 
 ---Dynamic `vim.validate()` wrapper which covers both legacy and newer implementations.
 --- ---
 ---@param T table<string, vim.validate.Spec|ValidateSpec>
 function M.validate(T)
-  if vim.fn.has('nvim-0.11') ~= 1 then
+  if not M.vim_has('nvim-0.11') then
     ---Filter table to fit legacy standard
     ---@cast T table<string, vim.validate.Spec>
     for name, spec in pairs(T) do
@@ -66,15 +105,15 @@ function M.get_dict_size(T)
   return len
 end
 
----Reverses a given table.
+---Reverses a given list-like table.
 ---
----If the passed data is an empty table, it'll be returned as-is.
+---If the passed data is an empty table it'll be returned as-is.
 ---
 ---If the data passed to the function is not a table,
 ---an error will be raised.
 --- ---
----@param T table
----@return table T
+---@param T any[]
+---@return any[] T
 function M.reverse(T)
   M.validate({ T = { T, { 'table' } } })
 
@@ -92,21 +131,33 @@ end
 ---Checks if module `mod` exists to be imported.
 --- ---
 ---@param mod string The `require()` argument to be checked
+---@param ret? boolean Whether to return the called module
 ---@return boolean exists A boolean indicating whether the module exists or not
-function M.mod_exists(mod)
-  M.validate({ mod = { mod, { 'string' } } })
+---@return unknown? module
+---@overload fun(mod: string): exists: boolean
+function M.mod_exists(mod, ret)
+  M.validate({
+    mod = { mod, { 'string' } },
+    ret = { ret, { 'boolean', 'nil' }, true },
+  })
+  ret = ret ~= nil and ret or false
 
   if mod == '' then
     return false
   end
-  local exists = pcall(require, mod)
+  local exists, module = pcall(require, mod)
+
+  if ret then
+    return exists, module
+  end
+
   return exists
 end
 
 ---Checks if a given number is type integer.
 --- ---
 ---@param num number
----@return boolean
+---@return boolean int
 function M.is_int(num)
   M.validate({ num = { num, { 'number' } } })
 
