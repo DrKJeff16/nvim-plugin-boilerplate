@@ -1,12 +1,25 @@
 # -*- coding: utf-8 -*-
-"""Template plugin."""
-import pynvim
+"""Python component for ``MyPlugin``."""
 from typing import NoReturn
+
+import pynvim
 
 
 @pynvim.plugin
-class MyPlugin(object):
-    """MyPlugin object."""
+class MyPlugin:
+    """
+    MyPlugin object.
+
+    Parameters
+    ----------
+    nvim : pynvim.Nvim
+        The ``Nvim`` object instance.
+
+    Attributes
+    ----------
+    nvim : pynvim.Nvim
+        The ``Nvim`` object instance.
+    """
 
     nvim: pynvim.nvim
 
