@@ -14,6 +14,7 @@ with some useful GitHub actions included.
 - Plenty of utilities you can use with your plugin ([`util.lua`](https://github.com/DrKJeff16/nvim-plugin-boilerplate/blob/main/lua/my-plugin/util.lua))
 - Pre-documented Lua code
 - Optional template file for `:checkhealth` ([`health.lua`](https://github.com/DrKJeff16/nvim-plugin-boilerplate/blob/main/lua/my-plugin/health.lua))
+- Optional Python 3 component ([`rplugin/python3/my-plugin.py`](https://github.com/DrKJeff16/nvim-plugin-boilerplate/blob/main/rplugin/python3/my-plugin.py))
 - CI utilities supported:
   - `pre-commit` config ([`.pre-commit-config.yaml`](./.pre-commit-config.yaml))
   - StyLua config ([`stylua.toml`](./stylua.toml))
@@ -55,6 +56,9 @@ lua/
 │   ├── config.lua  <==  Configuration module. Contains your main `setup()` function
 │   ├── health.lua  <==  Hooks for `:checkhealth` (OPTIONAL)
 └   └── util.lua  <==  Utilities for the plugin
+rplugin/
+├── python3/  <==  Folder containing the Python 3 components
+└   └── my-plugin.py  <==  The Python 3 component
 .github/
 ├── workflows/  <==  Folder containing all the GitHub Actions
 │   ├── selene.yml  <==  Workflow for selene
