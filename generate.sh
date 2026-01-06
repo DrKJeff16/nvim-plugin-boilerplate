@@ -158,7 +158,7 @@ _yn() {
 _rename_module() {
     if [[ -d ./lua/my-plugin ]] && _file_readable_writeable "./lua/my-plugin.lua"; then
         while true; do
-            _prompt_data "Rename your Lua module (previously: \`my-plugin\`): " 0
+            _prompt_data "Rename your plugin module (previously: \`my-plugin\`): " 0
 
             if [[ $DATA =~ ^[a-zA-Z_][a-zA-Z0-9_\-]*[a-zA-Z0-9_]$ ]]; then
                 break
@@ -171,6 +171,7 @@ _rename_module() {
 
         mv ./lua/my-plugin "./lua/${MODULE_NAME}" || return 1
         mv ./lua/my-plugin.lua "./lua/${MODULE_NAME}.lua" || return 1
+        mv ./rplugin/python3/my-plugin.py "./rplugin/python3/${MODULE_NAME}.py" || return 1
     fi
 
     return 0
@@ -194,6 +195,9 @@ _rename_annotations() {
     while IFS= read -r -d '' file; do
         sed -i "s/MyPlugin/${ANNOTATION_PREFIX}/g" "${file}" || return 1
     done < <(find lua -type f -regex '.*\.lua$' -print0)
+    while IFS= read -r -d '' file; do
+        sed -i "s/MyPlugin/${ANNOTATION_PREFIX}/g" "${file}" || return 1
+    done < <(find rplugin -type f -regex '.*\.py$' -print0)
 
     return 0
 }
@@ -331,6 +335,19 @@ _remove_health_file() {
     return 1
 }
 
+_remove_python_component() {
+    if ! _yn "Remove the Python component? [Y/n]: " 1 "Y"; then
+        return 0
+    fi
+
+    if _file_readable_writeable "./rplugin/python3/${MODULE_NAME}.py"; then
+        rm -rf ./rplugin
+        return $?
+    fi
+
+    return 1
+}
+
 _remove_script() {
     if ! _file_readable_writeable ./generate.sh; then
         return 1
@@ -352,6 +369,7 @@ _main() {
     _select_line_size || die 1 "Unable to set StyLua line size!"
 
     _remove_health_file || die 1 "Unable to (not) remove health file!"
+    _remove_python_component || die 1 "Unable to (not) remove Python component!"
 
     _remove_script || die 1
 
