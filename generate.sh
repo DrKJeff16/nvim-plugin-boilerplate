@@ -21,8 +21,9 @@ error() {
     return 0
 }
 
+# Only print text if verbose mode is On
 verbose_print() {
-    if [[ $VERBOSE -ne 1 ]]; then
+    if [[ $VERBOSE -eq 0 ]]; then
         return 0
     fi
 
@@ -31,10 +32,20 @@ verbose_print() {
     return 0
 }
 
+# Remove with verbose flag if `-v` was passed to script
+verbose_rm() {
+    if [[ $VERBOSE -eq 0 ]]; then
+        rm -rf "$@" || return 1
+        return 0
+    fi
+
+    rm -rfv "$@" || return 1
+    return 0
+}
+
 # Kill the script execution with an exit status and optional messages
 die() {
     local EC=1
-
     if [[ $# -ge 1 ]] && [[ $1 =~ ^(0|-?[1-9][0-9]*)$ ]]; then
         EC="$1"
         shift
@@ -90,7 +101,7 @@ _cmd_exists() {
     return 0
 }
 
-_cmd_exists 'find' || die 127 "\`find\` is not in PATH!"
+_cmd_exists 'find' || die 127 "\`find\` / \`sed\` / \`mv\` / \`rm\` not in PATH!"
 
 # Check whether a given file exists, is readable and is writeable aswell
 _file_readable_writeable() {
@@ -150,13 +161,11 @@ _yn() {
 
     while true; do
         _prompt_data "$PROMPT_TXT" "$ALLOW_EMPTY"
-
         if [[ -z "$DATA" ]]; then
             case $DEFAULT_CHOICE in
                 "Y") return 0 ;;
                 "N") return 1 ;;
             esac
-
             return 0
         fi
 
@@ -166,7 +175,6 @@ _yn() {
             *) continue ;;
         esac
     done
-
     return 1
 }
 
@@ -175,19 +183,15 @@ _rename_module() {
     if [[ -d ./lua/my-plugin ]] && _file_readable_writeable "./lua/my-plugin.lua"; then
         while true; do
             _prompt_data "Rename your plugin module (previously: \`my-plugin\`): " 0
-
             if [[ $DATA =~ ^[a-zA-Z_][a-zA-Z0-9_\-]*[a-zA-Z0-9_]$ ]]; then
                 break
             fi
-
             error "Invalid module name!" "Use a parseable Lua module name"
         done
 
         MODULE_NAME="${DATA}"
-
         mv ./lua/my-plugin "./lua/${MODULE_NAME}" || return 1
         mv ./lua/my-plugin.lua "./lua/${MODULE_NAME}.lua" || return 1
-
     fi
     if [[ -d ./rplugin/python3 ]] && _file_readable_writeable "./rplugin/python3/my-plugin.py"; then
         mv ./rplugin/python3/my-plugin.py "./rplugin/python3/${MODULE_NAME}.py" || return 1
@@ -200,19 +204,15 @@ _rename_module() {
 # Prompt to rename annotation classes
 _rename_annotations() {
     local IFS
-
     while true; do
         _prompt_data "Rename your module class annotations (previously: \`MyPlugin\`): " 0
-
         if [[ $DATA =~ ^[a-zA-Z][a-zA-Z0-9_\.]*[a-zA-Z0-9_]$ ]]; then
             break
         fi
-
         error "Invalid module name: \`${DATA}\`" "Try again..."
     done
 
     ANNOTATION_PREFIX="${DATA}"
-
     while IFS= read -r -d '' file; do
         sed -i "s/MyPlugin/${ANNOTATION_PREFIX}/g" "${file}" || return 1
     done < <(find lua -type f -regex '.*\.lua$' -print0)
@@ -228,7 +228,6 @@ _select_indentation() {
     local IFS
     local ET=""
     DATA=""
-
     while true; do
         _prompt_data "Use tabs or spaces? [Spaces/tabs]: " 1
         if [[ -n "$DATA" ]]; then
@@ -261,7 +260,6 @@ _select_indentation() {
         else
             local F_DATA=()
             IFS=$'\n' F_DATA=($(cat ./stylua.toml))
-
             printf "%s\n" "indent_type = \"${DATA}\"" >| ./stylua.toml
             printf "%s\n" "${F_DATA[@]}" >> ./stylua.toml
 
@@ -293,7 +291,6 @@ _select_indentation() {
         else
             local F_DATA=()
             IFS=$'\n' F_DATA=($(cat ./stylua.toml))
-
             printf "%s\n" "indent_width = ${DATA}" >| ./stylua.toml
             printf "%s\n" "${F_DATA[@]}" >> ./stylua.toml
 
@@ -308,16 +305,13 @@ _select_indentation() {
 _select_line_size() {
     local IFS
     DATA=""
-
     while true; do
         _prompt_data "Select your line size (default: 100): " 1
-
         if [[ -n "$DATA" ]]; then
             if [[ $DATA =~ ^[1-9][0-9]*$ ]]; then
                 LINE_SIZE="${DATA}"
                 break
             fi
-
             continue
         fi
 
@@ -331,7 +325,6 @@ _select_line_size() {
         else
             local F_DATA=()
             IFS=$'\n' F_DATA=($(cat ./stylua.toml))
-
             printf "%s\n" "column_width = ${LINE_SIZE}" >| ./stylua.toml
             printf "%s\n" "${F_DATA[@]}" >> ./stylua.toml
 
@@ -347,12 +340,11 @@ _remove_health_file() {
     if ! _yn "Remove the checkhealth file? [y/N]: " 1 "N"; then
         return 0
     fi
-
     if _file_readable_writeable "./lua/${MODULE_NAME}/health.lua"; then
-        rm "./lua/${MODULE_NAME}/health.lua"
+        verbose_print "Removing \`health.lua\`..." ""
+        verbose_rm "./lua/${MODULE_NAME}/health.lua"
         return $?
     fi
-
     return 1
 }
 
@@ -361,12 +353,11 @@ _remove_python_component() {
     if ! _yn "Remove the Python component? [Y/n]: " 1 "Y"; then
         return 0
     fi
-
     if _file_readable_writeable "./rplugin/python3/${MODULE_NAME}.py"; then
-        rm -rf ./rplugin
+        verbose_print "Removimg Python component..." ""
+        verbose_rm ./rplugin
         return $?
     fi
-
     return 1
 }
 
@@ -375,23 +366,18 @@ _remove_script() {
     if ! _file_readable_writeable ./generate.sh; then
         return 1
     fi
-
     if ! _yn "Self-destruct this script? [Y/n]: " 1 "Y"; then
+        verbose_print "" "This script will need to be deleted again!"
         return 0
     fi
 
-    rm ./generate.sh
+    verbose_print "Removing this script..." ""
+    verbose_rm ./generate.sh
     return $?
 }
 
 # Execute the script
 _main() {
-    while getopts "$OPTIONS" OPTION; do
-        case "$OPTION" in
-            v) VERBOSE=1 ;;
-        esac
-    done
-
     _rename_module || die 1 "Couldn't rename module file structure!"
     _rename_annotations || die 1 "Couldn't rename module annotations!"
 
@@ -401,10 +387,16 @@ _main() {
     _remove_health_file || die 1 "Unable to (not) remove health file!"
     _remove_python_component || die 1 "Unable to (not) remove Python component!"
 
-    _remove_script || die 1
+    _remove_script || die 1 "Unable to (not) remove this script!"
 
     die 0
 }
+
+while getopts "$OPTIONS" OPTION; do
+    case "$OPTION" in
+        v) VERBOSE=1 ;;
+    esac
+done
 
 _main
 
