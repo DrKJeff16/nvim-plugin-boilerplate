@@ -9,6 +9,8 @@ DATA=""
 MODULE_NAME=""
 ANNOTATION_PREFIX=""
 LINE_SIZE=""
+PLUGIN_NAME=""
+PLUGIN_DESCRIPTION=""
 
 OPTIONS=":v"
 
@@ -376,6 +378,29 @@ _remove_script() {
     return $?
 }
 
+# Rewrite `README.md`
+_rewrite_readme() {
+    ! _file_readable_writeable "./README.md" && return 1
+
+    _prompt_data "Input the plugin name: " 0
+    PLUGIN_NAME="${DATA}"
+
+    _prompt_data "Input the plugin description in one line (markdown syntax): " 1
+    PLUGIN_DESCRIPTION="${DATA}"
+
+
+    local TXT=(
+        "# ${PLUGIN_NAME}"
+        ""
+        "${PLUGIN_DESCRIPTION}"
+        ""
+        "<!-- vim: set ts=2 sts=2 sw=2 et ai si sta: -->"
+    )
+
+    printf "%s\n" "${TXT[@]}" >| ./README.md
+    return 0
+}
+
 # Execute the script
 _main() {
     _rename_module || die 1 "Couldn't rename module file structure!"
@@ -386,6 +411,8 @@ _main() {
 
     _remove_health_file || die 1 "Unable to (not) remove health file!"
     _remove_python_component || die 1 "Unable to (not) remove Python component!"
+
+    _rewrite_readme || die 1 "Unable to rewrite \`README.md\`!"
 
     _remove_script || die 1 "Unable to (not) remove this script!"
 
