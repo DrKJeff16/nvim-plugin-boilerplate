@@ -10,6 +10,10 @@ MODULE_NAME=""
 ANNOTATION_PREFIX=""
 LINE_SIZE=""
 
+OPTIONS=":v"
+
+VERBOSE=0
+
 # Print all args to `stderr`
 error() {
     local TXT=("$@")
@@ -17,6 +21,17 @@ error() {
     return 0
 }
 
+verbose_print() {
+    if [[ $VERBOSE -ne 1 ]]; then
+        return 0
+    fi
+
+    local TXT=("$@")
+    printf "%s\n" "${TXT[@]}"
+    return 0
+}
+
+# Kill the script execution with an exit status and optional messages
 die() {
     local EC=1
 
@@ -45,13 +60,13 @@ _cmd_exists() {
     fi
 
     local OPTS=":v"
-    local VERBOSE=0
+    local VERB=0
     local CMDS=()
     local EXES=()
     local ARG
     while getopts "$OPTS" ARG; do
         case "$ARG" in
-            v) VERBOSE=$((VERBOSE + 1)) ;;
+            v) VERB=$((VERB + 1)) ;;
             *)
                 command -v "$ARG" &> /dev/null || return 1
                 CMDS+=("$ARG")
@@ -61,11 +76,11 @@ _cmd_exists() {
         shift
     done
 
-    if [[ $VERBOSE -eq 1 ]]; then
+    if [[ $VERB -eq 1 ]]; then
         printf "%s\n" "${CMDS[@]}"
-    elif [[ $VERBOSE -eq 2 ]]; then
+    elif [[ $VERB -eq 2 ]]; then
         printf "\`%s\` ==> OK\n" "${CMDS[@]}"
-    elif [[ $VERBOSE -ge 3 ]]; then
+    elif [[ $VERB -ge 3 ]]; then
         for I in $(seq 1 ${#CMDS[@]}); do
             I=$((I - 1))
             printf "\`%s\` ==> \`%s\` ==> OK\n" "${CMDS[I]}" "${EXES[I]}"
@@ -92,10 +107,10 @@ _file_rw_not_empty() {
 
     _file_readable_writeable "$1" || return 1
     [[ -s "$1" ]] || return 1
-
     return 0
 }
 
+# Generic prompt
 _prompt_data() {
     local PROMPT_TXT="$1"
     local ALLOW_EMPTY="$2"
@@ -155,6 +170,7 @@ _yn() {
     return 1
 }
 
+# Prompt to rename this module's files
 _rename_module() {
     if [[ -d ./lua/my-plugin ]] && _file_readable_writeable "./lua/my-plugin.lua"; then
         while true; do
@@ -171,12 +187,17 @@ _rename_module() {
 
         mv ./lua/my-plugin "./lua/${MODULE_NAME}" || return 1
         mv ./lua/my-plugin.lua "./lua/${MODULE_NAME}.lua" || return 1
+
+    fi
+    if [[ -d ./rplugin/python3 ]] && _file_readable_writeable "./rplugin/python3/my-plugin.py"; then
         mv ./rplugin/python3/my-plugin.py "./rplugin/python3/${MODULE_NAME}.py" || return 1
+        return 0
     fi
 
-    return 0
+    return 1
 }
 
+# Prompt to rename annotation classes
 _rename_annotations() {
     local IFS
 
@@ -202,6 +223,7 @@ _rename_annotations() {
     return 0
 }
 
+# Prompt to select the indentation for Lua files
 _select_indentation() {
     local IFS
     local ET=""
@@ -221,10 +243,7 @@ _select_indentation() {
                     ET="noet"
                     break
                     ;;
-                *)
-                    error "Invalid indentation style!" "Try again..."
-                    continue
-                    ;;
+                *) continue ;;
             esac
         else
             DATA="Spaces"
@@ -285,6 +304,7 @@ _select_indentation() {
     return 0
 }
 
+# Prompt to select the maximum line size for Lua files
 _select_line_size() {
     local IFS
     DATA=""
@@ -322,6 +342,7 @@ _select_line_size() {
     return 0
 }
 
+# Prompt to remove the `checkhealth` file
 _remove_health_file() {
     if ! _yn "Remove the checkhealth file? [y/N]: " 1 "N"; then
         return 0
@@ -335,6 +356,7 @@ _remove_health_file() {
     return 1
 }
 
+# Prompt to remove the Python component
 _remove_python_component() {
     if ! _yn "Remove the Python component? [Y/n]: " 1 "Y"; then
         return 0
@@ -348,6 +370,7 @@ _remove_python_component() {
     return 1
 }
 
+# Prompt to remove this script
 _remove_script() {
     if ! _file_readable_writeable ./generate.sh; then
         return 1
@@ -361,7 +384,14 @@ _remove_script() {
     return $?
 }
 
+# Execute the script
 _main() {
+    while getopts "$OPTIONS" OPTION; do
+        case "$OPTION" in
+            v) VERBOSE=1 ;;
+        esac
+    done
+
     _rename_module || die 1 "Couldn't rename module file structure!"
     _rename_annotations || die 1 "Couldn't rename module annotations!"
 
