@@ -13,11 +13,10 @@ PLUGIN_NAME=""
 PLUGIN_DESCRIPTION=""
 
 OPTIONS=":v"
-
 VERBOSE=0
 
 # Print all args to `stderr`
-error() {
+_error() {
     local TXT=("$@")
     printf "%s\n" "${TXT[@]}" >&2
     return 0
@@ -58,7 +57,7 @@ die() {
         if [[ $EC -eq 0 ]]; then
             printf "%s\n" "${TXT[@]}"
         else
-            error "${TXT[@]}"
+            _error "${TXT[@]}"
         fi
     fi
 
@@ -68,7 +67,7 @@ die() {
 # Check whether a given console command exists
 _cmd_exists() {
     if [[ $# -eq 0 ]]; then
-        error "What command?"
+        _error "What command?"
         return 127
     fi
 
@@ -127,7 +126,6 @@ _file_rw_not_empty() {
 _prompt_data() {
     local PROMPT_TXT="$1"
     local ALLOW_EMPTY="$2"
-
     while true; do
         read -p "$PROMPT_TXT" -r
         case $REPLY in
@@ -151,7 +149,6 @@ _yn() {
     local PROMPT_TXT="$1"
     local ALLOW_EMPTY="$2"
     local DEFAULT_CHOICE="$3"
-
     if [[ $ALLOW_EMPTY -eq 1 ]]; then
         case $DEFAULT_CHOICE in
             [Yy] | [Yy][Ee][Ss] | "1") DEFAULT_CHOICE="Y" ;;
@@ -169,7 +166,6 @@ _yn() {
             esac
             return 0
         fi
-
         case $DATA in
             [Yy]) return 0 ;;
             [Nn]) return 1 ;;
@@ -187,7 +183,7 @@ _rename_module() {
             if [[ $DATA =~ ^[a-zA-Z_][a-zA-Z0-9_\-]*[a-zA-Z0-9_]$ ]]; then
                 break
             fi
-            error "Invalid module name!" "Use a parseable Lua module name"
+            _error "Invalid module name!" "Use a parseable Lua module name"
         done
 
         MODULE_NAME="${DATA}"
@@ -211,7 +207,7 @@ _rename_annotations() {
         if [[ $DATA =~ ^[a-zA-Z][a-zA-Z0-9_\.]*[a-zA-Z0-9_]$ ]]; then
             break
         fi
-        error "Invalid module name: \`${DATA}\`" "Try again..."
+        _error "Invalid module name: \`${DATA}\`" "Try again..."
     done
 
     ANNOTATION_PREFIX="${DATA}"
@@ -242,25 +238,24 @@ _select_indentation() {
     local ET=""
     DATA=""
     while true; do
-        _prompt_data "Use tabs or spaces? [Spaces/tabs]: " 1
-        if [[ -n "$DATA" ]]; then
-            case "$DATA" in
-                [Ss][Pp][Aa][Cc][Ee][Ss])
-                    DATA="Spaces"
-                    ET="et"
-                    break
-                    ;;
-                [Tt][Aa][Bb][Ss])
-                    DATA="Tabs"
-                    ET="noet"
-                    break
-                    ;;
-                *) continue ;;
-            esac
-        else
+        _prompt_data "Use tabs or spaces? [S[paces]/t[abs]]: " 1
+        if [[ -z "$DATA" ]]; then
             DATA="Spaces"
             break
         fi
+        case "$DATA" in
+            [Ss] | [Ss][Pp][Aa][Cc][Ee][Ss])
+                DATA="Spaces"
+                ET="et"
+                break
+                ;;
+            [Tt] | [Tt][Aa][Bb][Ss])
+                DATA="Tabs"
+                ET="noet"
+                break
+                ;;
+            *) continue ;;
+        esac
     done
 
     while IFS= read -r -d '' file; do
@@ -282,13 +277,13 @@ _select_indentation() {
 
     while true; do
         _prompt_data "Select your indentation level (default: 2): " 1
-        if [[ -n "$DATA" ]]; then
-            if ! [[ $DATA =~ ^[1-9]+[0-9]*$ ]]; then
-                error "Invalid indentation level!" "Try again..."
-                continue
-            fi
-        else
+        if [[ -z "$DATA" ]]; then
             DATA="2"
+            break
+        fi
+        if ! [[ $DATA =~ ^[1-9]+[0-9]*$ ]]; then
+            _error "Invalid indentation level!" "Try again..."
+            continue
         fi
         break
     done
@@ -445,7 +440,6 @@ _rewrite_readme() {
 
     _prompt_data "Input the plugin description in one line (markdown syntax): " 1
     PLUGIN_DESCRIPTION="${DATA}"
-
 
     local TXT=(
         "# ${PLUGIN_NAME}"
