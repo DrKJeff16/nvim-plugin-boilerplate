@@ -17,6 +17,7 @@ with some useful GitHub actions included.
 - Pre-documented Lua code
 - Optional template file for `:checkhealth` ([`health.lua`](https://github.com/DrKJeff16/nvim-plugin-boilerplate/blob/main/lua/my-plugin/health.lua))
 - Optional Python 3 component ([`rplugin/python3/my-plugin.py`](https://github.com/DrKJeff16/nvim-plugin-boilerplate/blob/main/rplugin/python3/my-plugin.py), DOCUMENTED)
+- Optional unit testing using `busted` ([`spec/`](https://github.com/DrKJeff16/nvim-plugin-boilerplate/blob/main/spec/))
 - CI utilities supported:
   - `pre-commit` config ([`.pre-commit-config.yaml`](./.pre-commit-config.yaml))
   - StyLua config ([`stylua.toml`](./stylua.toml))
@@ -52,6 +53,9 @@ generate.sh  <==  Bash script plugin template generator
 stylua.toml  <==  Config file for StyLua
 selene.toml  <==  Config file for selene
 vim.yml  <==  Std file for selene
+.busted  <==  Config file for busted
+spec/  <==  Contains all the unit tests
+└── my-plugin_spec.lua  <==  NOTE: All test files must end up with `*_spec.lua`!
 lua/
 ├── my-plugin.lua  <==  The main module
 ├── my-plugin/  <==  Folder containing all the plugin utils
