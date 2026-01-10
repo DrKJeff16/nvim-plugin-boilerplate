@@ -2,14 +2,14 @@
 local M = {}
 
 function M.check()
-  vim.health.start('MyPlugin')
+  vim.health.start('my-plugin')
 
   if vim.g.MyPlugin_setup == 1 then
-    vim.health.ok('MyPlugin has been setup!')
+    vim.health.ok('`my-plugin` has been setup!')
     return
   end
 
-  vim.health.error('MyPlugin has not been setup correctly!')
+  vim.health.error('`my-plugin` has not been setup correctly!')
 end
 
 return M
