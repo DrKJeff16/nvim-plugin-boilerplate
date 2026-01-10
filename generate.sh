@@ -378,7 +378,7 @@ _remove_selene() {
     return 0
 }
 
-# Prompt to remove the `spec/` directory
+# Prompt to remove the test components
 _remove_tests() {
     if ! _yn "Remove tests? [Y/n]: " 1 "Y"; then
         return 0
@@ -386,6 +386,10 @@ _remove_tests() {
     if _file_readable_writeable "./.busted"; then
         verbose_print "Removing busted config..."
         verbose_rm ./.busted || return 1
+    fi
+    if _file_readable_writeable "./Makefile"; then
+        verbose_print "Removing Makefile..."
+        verbose_rm ./Makefile || return 1
     fi
     if [[ -d ./spec ]]; then
         verbose_print "Removing tests..." ""
