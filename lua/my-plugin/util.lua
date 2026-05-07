@@ -1,5 +1,5 @@
 ---Non-legacy validation spec (>=v0.11)
----@class ValidateSpec
+---@class MyPlugin.ValidateSpec
 ---@field [1] any
 ---@field [2] vim.validate.Validator
 ---@field [3]? boolean
@@ -58,7 +58,7 @@ end
 
 ---Dynamic `vim.validate()` wrapper which covers both legacy and newer implementations.
 --- ---
----@param T table<string, vim.validate.Spec|ValidateSpec>
+---@param T table<string, vim.validate.Spec|MyPlugin.ValidateSpec>
 function M.validate(T)
   local max = vim.fn.has('nvim-0.11') == 1 and 3 or 4
   for name, spec in pairs(T) do
@@ -69,16 +69,16 @@ function M.validate(T)
   end
 
   if max == 3 then
-    ---@cast T table<string, vim.validate.Spec>
-    vim.validate(T)
+    ---@cast T table<string, MyPlugin.ValidateSpec>
+    for name, spec in pairs(T) do
+      table.insert(spec, 1, name)
+      vim.validate(unpack(spec))
+    end
     return
   end
 
-  ---@cast T table<string, ValidateSpec>
-  for name, spec in pairs(T) do
-    table.insert(spec, 1, name)
-    vim.validate(unpack(spec))
-  end
+  ---@cast T table<string, vim.validate.Spec>
+  vim.validate(T)
 end
 
 ---@param T table<string|integer, any>
@@ -131,13 +131,14 @@ function M.mod_exists(mod, ret)
     mod = { mod, { 'string' } },
     ret = { ret, { 'boolean', 'nil' }, true },
   })
-  ret = ret ~= nil and ret or false
-
+  if ret == nil then
+    ret = false
+  end
   if mod == '' then
     return false
   end
-  local exists, module = pcall(require, mod)
 
+  local exists, module = pcall(require, mod)
   if ret then
     return exists, module
   end
@@ -155,10 +156,11 @@ function M.is_int(num, cond)
     num = { num, { 'number' } },
     cond = { cond, { 'boolean', 'nil' }, true },
   })
-  cond = cond ~= nil and cond or true
+  if cond == nil then
+    cond = true
+  end
 
-  local is_int = math.floor(num) == num and math.ceil(num) == num
-  return is_int and cond
+  return (math.floor(num) == num and math.ceil(num) == num) and cond
 end
 
 ---Checks whether `data` is of type `t` or not.
