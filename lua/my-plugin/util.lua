@@ -22,11 +22,11 @@ end
 ---If the data passed to the function is not a table,
 ---an error will be raised.
 --- ---
----@param T any[]
----@return any[] NT
+---@generic T
+---@param T T
+---@return T NT
 function M.dedup(T)
   M.validate({ T = { T, { 'table' } } })
-
   if vim.tbl_isempty(T) then
     return T
   end
@@ -51,6 +51,8 @@ end
 ---@param feature string
 ---@return boolean has
 function M.vim_has(feature)
+  M.validate({ feature = { feature, { 'string' } } })
+
   return vim.fn.has(feature) == 1
 end
 
@@ -66,11 +68,13 @@ function M.validate(T)
     T[name] = spec
   end
 
-  if vim.fn.has('nvim-0.11') ~= 1 then
+  if max == 3 then
+    ---@cast T table<string, vim.validate.Spec>
     vim.validate(T)
     return
   end
 
+  ---@cast T table<string, ValidateSpec>
   for name, spec in pairs(T) do
     table.insert(spec, 1, name)
     vim.validate(unpack(spec))
@@ -81,8 +85,7 @@ end
 ---@return integer len
 function M.get_dict_size(T)
   M.validate({ T = { T, { 'table' } } })
-
-  if vim.tbl_isempty(T) then
+  if vim.tbl_isempty(T) or vim.islist(T) then
     return 0
   end
 

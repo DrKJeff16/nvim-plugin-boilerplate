@@ -338,7 +338,7 @@ _select_line_size() {
     local IFS
     DATA=""
     while true; do
-        _prompt_data "Select your line size (default: 100): " 1
+        _prompt_data "Select your line size (default: 120): " 1
         if [[ -n "$DATA" ]]; then
             if [[ $DATA =~ ^[1-9][0-9]*$ ]]; then
                 LINE_SIZE="${DATA}"
