@@ -85,12 +85,15 @@ end
 ---@return integer len
 function M.get_dict_size(T)
   M.validate({ T = { T, { 'table' } } })
-  if vim.tbl_isempty(T) or vim.islist(T) then
+  if vim.tbl_isempty(T) then
     return 0
+  end
+  if vim.islist(T) then
+    return #T
   end
 
   local len = 0
-  for _, _ in pairs(T) do
+  for _ in pairs(T) do
     len = len + 1
   end
   return len
@@ -103,12 +106,13 @@ end
 ---If the data passed to the function is not a table,
 ---an error will be raised.
 --- ---
----@param T any[]
----@return any[] T
+---@generic T: table
+---@param T T
+---@return T T
 function M.reverse(T)
   M.validate({ T = { T, { 'table' } } })
 
-  if vim.tbl_isempty(T) then
+  if vim.tbl_isempty(T) or not vim.islist(T) then
     return T
   end
 
