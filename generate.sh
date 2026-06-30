@@ -137,10 +137,58 @@ _usage() {
     TXT+=(
         "generate.sh - Generator script for \`nvim-plugin-boilerplate\`"
         ""
-        "Usage: generate.sh [-h] [-v]"
+        "Usage: generate.sh [-h] [-v] [-C <auto|yes|no>]"
         ""
-        "    -h             Print this help message with success exit code"
-        "    -v             Enables verbose mode"
+        "    -h                     Print this help message with success exit code"
+        "    -v                     Enables verbose mode"
+        ""
+        "    -o                     Whether to ONLY run the specified operations"
+        "                           (listed below)"
+        ""
+        "  OPERATIONS"
+        "  =========="
+        ""
+        "    -C <auto|yes|no>       Whether to clear the script at the end of execution."
+        "                           Selecting \`auto\` will use a prompt"
+        "                           (default: auto)"
+        ""
+        "    -D <DESCRIPTION>       Manually set the description for the README."
+        "                           Will automatically set \`-R\` to \`yes\`"
+        ""
+        "    -H <auto|yes|no>       Whether to keep the checkhealth (\`health.lua\`)."
+        "                           Selecting \`auto\` will use a prompt"
+        "                           (default: auto)"
+        ""
+        "    -I <spaces|tabs>       Manually set the indentation type"
+        ""
+        "    -L <auto|yes|no>       Whether to replace the plugin's license."
+        "                           Selecting \`auto\` will use a prompt"
+        "                           (default: auto)"
+        ""
+        "    -N <PLUGIN_NAME>       Manually set the plugin name for the README."
+        "                           Will automatically set \`-R\` to \`yes\`"
+        ""
+        "    -P <auto|yes|no>       Whether to keep the Python component."
+        "                           Selecting \`auto\` will use a prompt"
+        "                           (default: auto)"
+        ""
+        "    -R <auto|yes|no>       Whether to rewrite the README."
+        "                           Selecting \`auto\` will use a prompt"
+        "                           (default: auto)"
+        ""
+        "    -T <auto|yes|no>       Whether to keep the tests component."
+        "                           Selecting \`auto\` will use a prompt"
+        "                           (default: auto)"
+        ""
+        "    -c <auto|yes|no>       Whether to keep the CI components."
+        "                           Selecting \`auto\` will use a prompt"
+        "                           (default: auto)"
+        ""
+        "    -c <auto|yes|no>       Whether to keep the StyLua configuration."
+        "                           Selecting \`auto\` will use a prompt"
+        "                           (default: auto)"
+        ""
+        "    -t <TAB_SIZE>          Manually set the tab size"
         ""
     )
     _die "$EC" "${TXT[@]}"
@@ -729,9 +777,9 @@ _toggle_var_check() {
     REAL_ANS=2
     local ANS="$1"
     case "$ANS" in
-        "0" | [Nn] | [Nn][Oo]) REAL_ANS=0 ;;
-        "1" | [Yy] | [Yy][Ee][Ss]) REAL_ANS=0 ;;
-        "2" | [Aa][Uu][Tt][Oo] | [Pp][Rr][Oo][Mm][Pp][Tt]) REAL_ANS=2 ;;
+        [Nn] | [Nn][Oo]) REAL_ANS=0 ;;
+        [Yy] | [Yy][Ee][Ss]) REAL_ANS=0 ;;
+        [Aa][Uu][Tt][Oo] | [Pp][Rr][Oo][Mm][Pp][Tt]) REAL_ANS=2 ;;
         *) _usage 3 "Invalid argument: \`${ANS}\`" ;;
     esac
     return 0
@@ -744,6 +792,30 @@ while getopts "$OPTIONS" OPTION; do
             CLEAN_SCRIPT="${REAL_ANS}"
             _not_in_selected "clear" && SELECTED+=("clear")
             ;;
+        D)
+            PLUGIN_DESCRIPTION="${OPTARG}"
+            ASK_DESCRIPTION=0
+            _not_in_selected "readme" && SELECTED+=("readme")
+            ;;
+        H)
+            _toggle_var_check "${OPTARG}"
+            WITH_HEALTH="${REAL_ANS}"
+            _not_in_selected "health" && SELECTED+=("health")
+            ;;
+        I)
+            INDENTATION="${OPTARG}"
+            _not_in_selected "indentation" && SELECTED+=("indentation")
+            ;;
+        L)
+            _toggle_var_check "${OPTARG}"
+            REPLACE_LICENSE="${REAL_ANS}"
+            _not_in_selected "license" && SELECTED+=("license")
+            ;;
+        N)
+            PLUGIN_NAME="${OPTARG}"
+            ASK_NAME=0
+            _not_in_selected "readme" && SELECTED+=("readme")
+            ;;
         P)
             _toggle_var_check "${OPTARG}"
             WITH_PYTHON="${REAL_ANS}"
@@ -754,49 +826,25 @@ while getopts "$OPTIONS" OPTION; do
             REWRITE_README="${REAL_ANS}"
             _not_in_selected "readme" && SELECTED+=("readme")
             ;;
-        L)
-            _toggle_var_check "${OPTARG}"
-            REPLACE_LICENSE="${REAL_ANS}"
-            _not_in_selected "license" && SELECTED+=("license")
-            ;;
-        H)
-            _toggle_var_check "${OPTARG}"
-            WITH_HEALTH="${REAL_ANS}"
-            _not_in_selected "health" && SELECTED+=("health")
-            ;;
-        s)
-            _toggle_var_check "${OPTARG}"
-            WITH_STYLUA="${REAL_ANS}"
-            _not_in_selected "stylua" && SELECTED+=("stylua")
-            ;;
         S)
             _toggle_var_check "${OPTARG}"
             WITH_SELENE="${REAL_ANS}"
             _not_in_selected "selene" && SELECTED+=("selene")
-            ;;
-        c)
-            _toggle_var_check "${OPTARG}"
-            WITH_CI="${REAL_ANS}"
-            _not_in_selected "ci" && SELECTED+=("ci")
             ;;
         T)
             _toggle_var_check "${OPTARG}"
             WITH_TESTS="${REAL_ANS}"
             _not_in_selected "tests" && SELECTED+=("tests")
             ;;
-        N)
-            PLUGIN_NAME="${OPTARG}"
-            ASK_NAME=0
-            _not_in_selected "readme" && SELECTED+=("readme")
+        c)
+            _toggle_var_check "${OPTARG}"
+            WITH_CI="${REAL_ANS}"
+            _not_in_selected "ci" && SELECTED+=("ci")
             ;;
-        D)
-            PLUGIN_DESCRIPTION="${OPTARG}"
-            ASK_DESCRIPTION=0
-            _not_in_selected "readme" && SELECTED+=("readme")
-            ;;
-        I)
-            INDENTATION="${OPTARG}"
-            _not_in_selected "indentation" && SELECTED+=("indentation")
+        s)
+            _toggle_var_check "${OPTARG}"
+            WITH_STYLUA="${REAL_ANS}"
+            _not_in_selected "stylua" && SELECTED+=("stylua")
             ;;
         t)
             TAB_SIZE="${OPTARG}"
