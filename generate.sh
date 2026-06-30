@@ -11,9 +11,31 @@ ANNOTATION_PREFIX=""
 LINE_SIZE=""
 PLUGIN_NAME=""
 PLUGIN_DESCRIPTION=""
+INDENTATION=""
+TAB_SIZE=""
 
-OPTIONS=":hv"
+OPTIONS=":hvos:t:c:C:R:P:L:N:D:T:H:S:I:"
 VERBOSE=0
+ONLY_SELECTED=0
+ASK_NAME=1
+ASK_DESCRIPTION=1
+SELECTED=()
+
+REAL_ANS=2 # Intermediate variable, to store values when calling `_toggle_var_check`
+
+# Toggle variables
+# - `0`: Disabled
+# - `1`: Enabled
+# - `2`: Auto/Prompt (default)
+CLEAN_SCRIPT=2
+REPLACE_LICENSE=2
+REWRITE_README=2
+WITH_HEALTH=2
+WITH_PYTHON=2
+WITH_SELENE=2
+WITH_STYLUA=2
+WITH_TESTS=2
+WITH_CI=2
 
 # Print all args to `stderr`
 _error() {
@@ -24,9 +46,7 @@ _error() {
 
 # Only print text if verbose mode is On
 _verbose_print() {
-    if [[ $VERBOSE -eq 0 ]]; then
-        return 0
-    fi
+    [[ $VERBOSE -eq 0 ]] && return 0
 
     local TXT=("$@")
     printf "%s\n" "${TXT[@]}"
@@ -46,7 +66,7 @@ _verbose_rm() {
 
 # Kill the script execution with an exit status and optional messages
 _die() {
-    local EC=1
+    local EC=0
     if [[ $# -ge 1 ]] && [[ $1 =~ ^(0|-?[1-9][0-9]*)$ ]]; then
         EC="$1"
         shift
@@ -261,26 +281,41 @@ _select_indentation() {
     local IFS
     local ET=""
     DATA=""
-    while true; do
-        _prompt_data "Use tabs or spaces? [S[paces]/t[abs]]: " 1
-        if [[ -z "$DATA" ]]; then
-            DATA="Spaces"
-            break
-        fi
-        case "$DATA" in
+
+    if [[ -n "$INDENTATION" ]]; then
+        case "$INDENTATION" in
             [Ss] | [Ss][Pp][Aa][Cc][Ee][Ss])
-                DATA="Spaces"
+                INDENTATION="Spaces"
                 ET="et"
-                break
                 ;;
             [Tt] | [Tt][Aa][Bb][Ss])
-                DATA="Tabs"
+                INDENTATION="Tabs"
                 ET="noet"
-                break
                 ;;
-            *) continue ;;
+            *) _usage 3 "Bad indentation!" ;;
         esac
-    done
+    else
+        while true; do
+            _prompt_data "Use tabs or spaces? [S[paces]/t[abs]]: " 1
+            if [[ -z "$DATA" ]]; then
+                INDENTATION="Spaces"
+                break
+            fi
+            case "$DATA" in
+                [Ss] | [Ss][Pp][Aa][Cc][Ee][Ss])
+                    INDENTATION="Spaces"
+                    ET="et"
+                    break
+                    ;;
+                [Tt] | [Tt][Aa][Bb][Ss])
+                    INDENTATION="Tabs"
+                    ET="noet"
+                    break
+                    ;;
+                *) continue ;;
+            esac
+        done
+    fi
 
     if [[ "$ET" == "noet" ]]; then
         while IFS= read -r -d '' file; do
@@ -288,47 +323,58 @@ _select_indentation() {
         done < <(find lua -type f -regex '.*\.lua$' -print0)
     fi
 
-    if _file_rw_not_empty './.stylua.toml'; then
-        if grep -E '^indent_type\s+=\s+.*$' ./.stylua.toml &> /dev/null; then
-            sed -i "s/^indent_type\\s\\+=\\s.*$/indent_type = \"${DATA}\"/g" ./.stylua.toml || return 1
-        else
-            local F_DATA=()
-            IFS=$'\n' F_DATA=($(cat ./.stylua.toml))
-            printf "%s\n" "indent_type = \"${DATA}\"" >| ./.stylua.toml
-            printf "%s\n" "${F_DATA[@]}" >> ./.stylua.toml
-
-            unset F_DATA
-        fi
+    local TARGET_FILE=""
+    if _file_rw_not_empty ./'.stylua.toml'; then
+        TARGET_FILE=".stylua.toml"
+    elif _file_rw_not_empty ./'stylua.toml'; then
+        TARGET_FILE="stylua.toml"
+    else
+        _error "WARNING: Unable to find \`stylua.toml\` or \`.stylua.toml\`. Aborting indentation change for StyLua!"
+        return 0
     fi
 
-    while true; do
-        _prompt_data "Select your indentation level (default: 2): " 1
-        if [[ -z "$DATA" ]]; then
-            DATA="2"
+    if grep -qE '^indent_type\s+=\s+.*$' ./"${TARGET_FILE}"; then
+        sed -i "s/^indent_type\\s\\+=\\s.*$/indent_type = \"${INDENTATION}\"/g" ./"${TARGET_FILE}" || return 1
+    else
+        local F_DATA=()
+        IFS=$'\n' F_DATA=($(cat ./"${TARGET_FILE}"))
+        printf "%s\n" "indent_type = \"${INDENTATION}\"" | tee ./"${TARGET_FILE}" &> /dev/null
+        printf "%s\n" "${F_DATA[@]}" | tee -a ./"${TARGET_FILE}" &> /dev/null
+
+        unset F_DATA
+    fi
+
+    if [[ -n "$TAB_SIZE" ]]; then
+        ! [[ $TAB_SIZE =~ ^[1-9]+[0-9]*$ ]] && _usage 3 "Invalid indentation level \`${TAB_SIZE}\`"
+    else
+        while true; do
+            _prompt_data "Select your indentation level (default: 2): " 1
+            TAB_SIZE="${DATA}"
+            if [[ -z "${TAB_SIZE}" ]]; then
+                TAB_SIZE="2"
+                break
+            fi
+            if ! [[ $TAB_SIZE =~ ^[1-9]+[0-9]*$ ]]; then
+                _error "Invalid indentation level!" "Try again..."
+                continue
+            fi
             break
-        fi
-        if ! [[ $DATA =~ ^[1-9]+[0-9]*$ ]]; then
-            _error "Invalid indentation level!" "Try again..."
-            continue
-        fi
-        break
-    done
+        done
+    fi
 
     while IFS= read -r -d '' file; do
-        sed -i "s/^--\\svim:\\sset\\sts=[1-9]\\+[0-9]*\\ssts=[1-9]\\+[0-9]*\\ssw=[1-9]\\+[0-9]*/-- vim: set ts=${DATA} sts=${DATA} sw=${DATA}/g" "${file}" || return 1
+        sed -i "s/^--\\svim:\\sset\\sts=[1-9]\\+[0-9]*\\ssts=[1-9]\\+[0-9]*\\ssw=[1-9]\\+[0-9]*/-- vim: set ts=${TAB_SIZE} sts=${TAB_SIZE} sw=${TAB_SIZE}/g" "${file}" || return 1
     done < <(find lua -type f -regex '.*\.lua$' -print0)
 
-    if _file_rw_not_empty './.stylua.toml'; then
-        if grep -E '^indent_width\s+=\s+.*$' ./.stylua.toml &> /dev/null; then
-            sed -i "s/^indent_width\\s\\+=\\s.*$/indent_width = ${DATA}/g" ./.stylua.toml || return 1
-        else
-            local F_DATA=()
-            IFS=$'\n' F_DATA=($(cat ./.stylua.toml))
-            printf "%s\n" "indent_width = ${DATA}" >| ./.stylua.toml
-            printf "%s\n" "${F_DATA[@]}" >> ./.stylua.toml
+    if grep -qE '^indent_width\s+=\s+.*$' ./"${TARGET_FILE}"; then
+        sed -i "s/^indent_width\\s\\+=\\s.*$/indent_width = ${TAB_SIZE}/g" ./"${TARGET_FILE}" || return 1
+    else
+        local F_DATA=()
+        IFS=$'\n' F_DATA=($(cat ./"${TARGET_FILE}"))
+        printf "%s\n" "indent_width = ${TAB_SIZE}" | tee ./"${TARGET_FILE}" &> /dev/null
+        printf "%s\n" "${F_DATA[@]}" | tee -a ./"${TARGET_FILE}" &> /dev/null
 
-            unset F_DATA
-        fi
+        unset F_DATA
     fi
     return 0
 }
@@ -351,30 +397,44 @@ _select_line_size() {
         break
     done
 
-    if _file_rw_not_empty './.stylua.toml'; then
-        if grep -E '^column_width\s+=\s+.*$' ./.stylua.toml &> /dev/null; then
-            sed -i "s/^column_width\\s\\+=\\s.*$/column_width = ${LINE_SIZE}/g" ./.stylua.toml || return 1
-        else
-            local F_DATA=()
-            IFS=$'\n' F_DATA=($(cat ./.stylua.toml))
-            printf "%s\n" "column_width = ${LINE_SIZE}" >| ./.stylua.toml
-            printf "%s\n" "${F_DATA[@]}" >> ./.stylua.toml
+    local TARGET_FILE=""
+    if _file_rw_not_empty ./'.stylua.toml'; then
+        TARGET_FILE=".stylua.toml"
+    elif _file_rw_not_empty ./'stylua.toml'; then
+        TARGET_FILE="stylua.toml"
+    else
+        _error "WARNING: Unable to find \`stylua.toml\` or \`.stylua.toml\`. Aborting indentation change for StyLua!"
+        return 0
+    fi
 
-            unset F_DATA
-        fi
+    if grep -qE '^column_width\s+=\s+.*$' ./"${TARGET_FILE}"; then
+        sed -i "s/^column_width\\s\\+=\\s.*$/column_width = ${LINE_SIZE}/g" ./"${TARGET_FILE}" || return 1
+    else
+        local F_DATA=()
+        IFS=$'\n' F_DATA=($(cat ./"${TARGET_FILE}"))
+        printf "%s\n" "column_width = ${LINE_SIZE}" | tee ./"${TARGET_FILE}" &> /dev/null
+        printf "%s\n" "${F_DATA[@]}" | tee -a ./"${TARGET_FILE}" &> /dev/null
+
+        unset F_DATA
     fi
     return 0
 }
 
 # Prompt to remove the StyLua config
 _remove_stylua() {
-    if ! _yn "Remove StyLua config? [y/N]: " 1 "N"; then
-        return 0
-    fi
+    case "${WITH_STYLUA}" in
+        "0") : ;;
+        "1") return 0 ;;
+        "2") ! _yn "Remove StyLua config? [y/N]: " 1 "N" && return 0 ;;
+    esac
     if _file_readable_writeable "./.stylua.toml"; then
         _verbose_print "Removing \`.stylua.toml\`..." ""
         _verbose_rm ./.stylua.toml || return 1
+    elif _file_readable_writeable "./stylua.toml"; then
+        _verbose_print "Removing \`stylua.toml\`..." ""
+        _verbose_rm ./stylua.toml || return 1
     fi
+
     if _file_readable_writeable "./.github/workflows/stylua.yml"; then
         _verbose_print "Removing \`.github/workflows/stylua.yml\`..." ""
         _verbose_rm ./.github/workflows/stylua.yml || return 1
@@ -384,12 +444,14 @@ _remove_stylua() {
 
 # Prompt to remove the selene config
 _remove_selene() {
-    if ! _yn "Remove \`selene\` config? [y/N]: " 1 "N"; then
-        return 0
-    fi
+    case "${WITH_SELENE}" in
+        "0") : ;;
+        "1") return 0 ;;
+        "2") ! _yn "Remove \`selene\` config? [Y/n]: " 1 "Y" && return 0 ;;
+    esac
     if _file_readable_writeable "./selene.toml"; then
         _verbose_print "Removing \`selene.toml\`..." ""
-        _verbose_rm ./.stylua.toml || return 1
+        _verbose_rm ./selene.toml || return 1
     fi
     if _file_readable_writeable "./vim.yml"; then
         _verbose_print "Removing \`vim.yml\`..." ""
@@ -404,9 +466,12 @@ _remove_selene() {
 
 # Prompt to remove the test components
 _remove_tests() {
-    if ! _yn "Remove tests? [Y/n]: " 1 "Y"; then
-        return 0
-    fi
+    case "${WITH_TESTS}" in
+        "0") : ;;
+        "1") return 0 ;;
+        "2") ! _yn "Remove tests? [Y/n]: " 1 "Y" &&  return 0 ;;
+    esac
+
     if _file_readable_writeable "./.busted"; then
         _verbose_print "Removing busted config..."
         _verbose_rm ./.busted || return 1
@@ -422,11 +487,14 @@ _remove_tests() {
     return 0
 }
 
-# Prompt to remove the `checkhealth` file
+# Remove the `checkhealth` file
 _remove_health_file() {
-    if ! _yn "Remove the checkhealth file? [Y/n]: " 1 "Y"; then
-        return 0
-    fi
+    case "${WITH_HEALTH}" in
+        "0") : ;;
+        "1") return 0 ;;
+        "2") ! _yn "Remove checkhealth file? [Y/n]: " 1 "Y" && return 0 ;;
+    esac
+
     if _file_readable_writeable "./lua/${MODULE_NAME}/health.lua"; then
         _verbose_print "Removing \`health.lua\`..." ""
         _verbose_rm "./lua/${MODULE_NAME}/health.lua" || return 1
@@ -434,42 +502,71 @@ _remove_health_file() {
     return 0
 }
 
-# Prompt to remove the Python component
+# Remove the Python component
 _remove_python_component() {
-    if ! _yn "Remove the Python component? [Y/n]: " 1 "Y"; then
+    case "${WITH_PYTHON}" in
+        "0") : ;;
+        "1") return 0 ;;
+        "2") ! _yn "Remove the Python component? [Y/n]: " 1 "Y" && return 0 ;;
+    esac
+
+    if ! _file_readable_writeable "./rplugin/python3/${MODULE_NAME}.py"; then
+        _error "WARNING: Cannot find Python component. Unable to remove it!"
         return 0
     fi
-    if _file_readable_writeable "./rplugin/python3/${MODULE_NAME}.py"; then
-        _verbose_print "Removimg Python component..." ""
-        _verbose_rm ./rplugin || return 1
-    fi
+
+    _verbose_print "Removimg Python component..." ""
+    _verbose_rm ./rplugin || return 1
     return 0
 }
 
 # Prompt to remove this script
 _remove_script() {
     if ! _file_readable_writeable ./generate.sh; then
+        _error "WARNING: Cannot find this very script. Unable to remove it!"
         return 1
     fi
-    if ! _yn "Self-destruct this script? [Y/n]: " 1 "Y"; then
-        _verbose_print "" "This script will need to be deleted again!"
-        return 0
-    fi
 
-    _verbose_print "Removing this script...\n"
+    case "${CLEAN_SCRIPT}" in
+        "0")
+            _error "This script will need to be deleted manually!"
+            return 0
+            ;;
+        "1") : ;;
+        "2")
+            ! _yn "Self-destruct this script? [Y/n]: " 1 "Y" \
+                && _error "" "This script will need to be deleted manually!" \
+                && return 0
+
+            ;;
+    esac
+
+    _verbose_print "Removing this script..." ""
     _verbose_rm ./generate.sh || return 1
     return 0
 }
 
 # Rewrite `README.md`
 _rewrite_readme() {
-    ! _file_readable_writeable "./README.md" && return 1
+    if ! _file_readable_writeable "./README.md"; then
+        _error "WARNING: No \`README.md\` could be found!"
+        return 0
+    fi
 
-    _prompt_data "Input the plugin name: " 0
-    PLUGIN_NAME="${DATA}"
+    case "${REWRITE_README}" in
+        "0") return 0 ;;
+        "1") : ;;
+        "2") ! _yn "Rewrite your \`README.md\`? [Y/n]: " 1 "Y" && return 0 ;;
+    esac
 
-    _prompt_data "Input the plugin description in one line (markdown syntax): " 1
-    PLUGIN_DESCRIPTION="${DATA}"
+    if [[ $ASK_NAME -eq 1 ]] && [[ -z "$PLUGIN_NAME" ]]; then
+        _prompt_data "Input the plugin name: " 0
+        PLUGIN_NAME="${DATA}"
+    fi
+    if [[ $ASK_DESCRIPTION -eq 1 ]] && [[ -z "$PLUGIN_DESCRIPTION" ]]; then
+        _prompt_data "Input the plugin description in one line (markdown syntax): " 1
+        PLUGIN_DESCRIPTION="${DATA}"
+    fi
 
     local TXT=(
         "# ${PLUGIN_NAME}"
@@ -479,60 +576,64 @@ _rewrite_readme() {
         "<!-- vim: set ts=2 sts=2 sw=2 et ai si sta: -->"
     )
 
-    printf "%s\n" "${TXT[@]}" >| ./README.md
+    printf "%s\n" "${TXT[@]}" | tee ./README.md &> /dev/null
     return 0
 }
 
 _replace_license() {
-    ! _cmd_exists 'gh' && return 0
-
-    printf "%s\n" \
-        "Changing license will use the GitHub CLI (\`gh\`)." \
-        "All operations will be verbose for transparency." \
-        ""
-
-    _yn "Do you wish to use a different license? [y/N]: " 1 "N" || return 0
-    if ! gh extension list | grep "mislav/gh-license" &> /dev/null; then
-        printf "%s\n" \
-            "This operation requires the \`gh\` extension \`mislav/gh-license\` to be installed."
-
-        _yn "Do you wish to install it? [Y/n]: " 1 "Y" || return 0
-        gh extension install "mislav/gh-license" || return 1
+    case "${REPLACE_LICENSE}" in
+        "0") return 0 ;;
+        "1") : ;;
+        "2") ! _yn "Do you wish to use a different license? [y/N]: " 1 "N" && return 0 ;;
+    esac
+    if ! _cmd_exists 'gh'; then
+        _error "\`gh\` is not installed. Aborting license replacing!"
+        return 0
     fi
 
-    printf "%s\n" \
-        "" \
-        "agpl-3.0" \
-        "apache-2.0" \
-        "bsd-2-clause" \
-        "bsd-3-clause" \
-        "bsl-1.0" \
-        "cc0-1.0" \
-        "epl-2.0" \
-        "gpl-2.0" \
-        "gpl-3.0" \
-        "lgpl-2.1" \
-        "mit" \
-        "mpl-2.0" \
-        "unlicense"
+    printf "%s\n" "Changing license will use the GitHub CLI (\`gh\`). All operations will be verbose for transparency."
+    read -rp "Press ENTER to continue..." _TRASH
 
-    _prompt_data "Choose one of the licenses listed above (case-sensitive): " 1
-    case "${DATA}" in
-        "agpl-3.0") LICENSE="agpl-3.0" ;;
-        "apache-2.0") LICENSE="apache-2.0" ;;
-        "bsd-2-clause") LICENSE="bsd-2-clause" ;;
-        "bsd-3-clause") LICENSE="bsd-2-clause" ;;
-        "bsl-1.0") LICENSE="bsl-1.0" ;;
-        "cc0-1.0") LICENSE="cc0-1.0" ;;
-        "epl-2.0") LICENSE="epl-2.0" ;;
-        "gpl-2.0") LICENSE="gpl-2.0" ;;
-        "gpl-3.0") LICENSE="gpl-3.0" ;;
-        "lgpl-2.1") LICENSE="lgpl-2.1" ;;
-        "mit") LICENSE="mit" ;;
-        "mpl-2.0") LICENSE="mpl-2.0" ;;
-        "unlicense") LICENSE="unlicense" ;;
-        *) return 0 ;;
-    esac
+    if ! gh extension list | grep -q "mislav/gh-license"; then
+        ! _yn "This operation requires the \`gh\` extension \`mislav/gh-license\` to be installed.\nDo you wish to install it? [Y/n]: " 1 "Y" && return 0
+        ! gh extension install "mislav/gh-license" && return 1
+    fi
+
+    while true; do
+        printf "%s\n" \
+            "" \
+            "agpl-3.0" \
+            "apache-2.0" \
+            "bsd-2-clause" \
+            "bsd-3-clause" \
+            "bsl-1.0" \
+            "cc0-1.0" \
+            "epl-2.0" \
+            "gpl-2.0" \
+            "gpl-3.0" \
+            "lgpl-2.1" \
+            "mit" \
+            "mpl-2.0" \
+            "unlicense"
+
+        _prompt_data "Choose one of the licenses listed above (case-sensitive): " 1
+        case "${DATA}" in
+            "agpl-3.0") LICENSE="agpl-3.0" ;;
+            "apache-2.0") LICENSE="apache-2.0" ;;
+            "bsd-2-clause") LICENSE="bsd-2-clause" ;;
+            "bsd-3-clause") LICENSE="bsd-2-clause" ;;
+            "bsl-1.0") LICENSE="bsl-1.0" ;;
+            "cc0-1.0") LICENSE="cc0-1.0" ;;
+            "epl-2.0") LICENSE="epl-2.0" ;;
+            "gpl-2.0") LICENSE="gpl-2.0" ;;
+            "gpl-3.0") LICENSE="gpl-3.0" ;;
+            "lgpl-2.1") LICENSE="lgpl-2.1" ;;
+            "mit") LICENSE="mit" ;;
+            "mpl-2.0") LICENSE="mpl-2.0" ;;
+            "unlicense") LICENSE="unlicense" ;;
+            *) continue ;;
+        esac
+    done
 
     rm -f ./LICENSE
     gh license "${LICENSE}" || return 1
@@ -540,22 +641,41 @@ _replace_license() {
 }
 
 _remove_ci() {
-    ! [[ -d ./.github ]] && return 0
+    if ! [[ -d ./.github ]]; then
+        _error "No \`.github\` directory found. Aborting CI removal!"
+        return 0
+    fi
+
+    _verbose_rm ./.github/FUNDING.yml
+
+    case "${WITH_CI}" in
+        "0") : ;;
+        "1") return 0 ;;
+        "2") ! _yn "Remove CI? [Y/n]: " 1 "Y" && return 0 ;;
+    esac
 
     if [[ -f ./.github/CODEOWNERS ]]; then
         _yn "Remove CODEOWNERS file? [Y/n]: " 1 "Y" \
             && _verbose_rm ./.github/CODEOWNERS
 
     fi
-
     if [[ -f ./.github/workflows/vim-eof-comment.yml ]]; then
         _yn "Remove vim-eof-comment GitHub Action? [Y/n]: " 1 "Y" \
             && _verbose_rm ./.github/workflows/vim-eof-comment.yml
 
     fi
 
-    _verbose_rm ./.github/FUNDING.yml
-    return $?
+    return 0
+}
+
+_not_in_selected() {
+    [[ ${#SELECTED[@]} -eq 0 ]] && return 0
+
+    local ITEM="$1"
+    for S in "${SELECTED[@]}"; do
+        [[ "${S}" == "${ITEM}" ]] && return 1
+    done
+    return 0
 }
 
 # Execute the script
@@ -563,35 +683,137 @@ _main() {
     _rename_module || _die 1 "Couldn't rename module file structure!"
     _rename_annotations || _die 1 "Couldn't rename module annotations!"
 
-    _select_indentation || _die 1 "Unable to set indentation!"
-    _select_line_size || _die 1 "Unable to set StyLua line size!"
+    if [[ $ONLY_SELECTED -eq 0 ]] || [[ $ONLY_SELECTED -eq 1 ]] && ! _not_in_selected "indentation"; then
+        _select_indentation || _die 1 "Unable to set indentation!"
+        _select_line_size || _die 1 "Unable to set StyLua line size!"
+    fi
 
-    _remove_tests || _die 1 "Unable to (not) remove tests!"
-    _remove_health_file || _die 1 "Unable to (not) remove health file!"
-    _remove_python_component || _die 1 "Unable to (not) remove Python component!"
+    if [[ $ONLY_SELECTED -eq 0 ]] || [[ $ONLY_SELECTED -eq 1 ]] && ! _not_in_selected "tests"; then
+        _remove_tests || _die 1 "Unable to (not) remove tests!"
+    fi
 
-    _remove_stylua || _die 1 "Unable to (not) remove StyLua config!"
-    _remove_selene || _die 1 "Unable to (not) remove selene config!"
+    if [[ $ONLY_SELECTED -eq 0 ]] || [[ $ONLY_SELECTED -eq 1 ]] && ! _not_in_selected "health"; then
+        _remove_health_file || _die 1 "Unable to (not) remove health file!"
+    fi
 
-    _replace_license || _die 1 "Unable to replace license!"
-    _remove_ci || _die 1 "Unable to remove useless CI components!"
+    if [[ $ONLY_SELECTED -eq 0 ]] || [[ $ONLY_SELECTED -eq 1 ]] && ! _not_in_selected "python"; then
+        _remove_python_component || _die 1 "Unable to (not) remove Python component!"
+    fi
 
-    _rewrite_readme || _die 1 "Unable to rewrite \`README.md\`!"
+    if [[ $ONLY_SELECTED -eq 0 ]] || [[ $ONLY_SELECTED -eq 1 ]] && ! _not_in_selected "stylua"; then
+        _remove_stylua || _die 1 "Unable to (not) remove StyLua config!"
+    fi
+    if [[ $ONLY_SELECTED -eq 0 ]] || [[ $ONLY_SELECTED -eq 1 ]] && ! _not_in_selected "selene"; then
+        _remove_selene || _die 1 "Unable to (not) remove selene config!"
+    fi
 
-    _remove_script || _die 1 "Unable to (not) remove this script!"
-    _die 0
+    if [[ $ONLY_SELECTED -eq 0 ]] || [[ $ONLY_SELECTED -eq 1 ]] && ! _not_in_selected "license"; then
+        _replace_license || _die 1 "Unable to replace license!"
+    fi
+    if [[ $ONLY_SELECTED -eq 0 ]] || [[ $ONLY_SELECTED -eq 1 ]] && ! _not_in_selected "ci"; then
+        _remove_ci || _die 1 "Unable to remove useless CI components!"
+    fi
+
+    if [[ $ONLY_SELECTED -eq 0 ]] || [[ $ONLY_SELECTED -eq 1 ]] && ! _not_in_selected "readme"; then
+        _rewrite_readme || _die 1 "Unable to rewrite \`README.md\`!"
+    fi
+
+    if [[ $ONLY_SELECTED -eq 0 ]] || [[ $ONLY_SELECTED -eq 1 ]] && ! _not_in_selected "clear"; then
+        _remove_script || _die 1 "Unable to (not) remove this script!"
+    fi
+
+    return 0
+}
+
+_toggle_var_check() {
+    REAL_ANS=2
+    local ANS="$1"
+    case "$ANS" in
+        "0" | [Nn] | [Nn][Oo]) REAL_ANS=0 ;;
+        "1" | [Yy] | [Yy][Ee][Ss]) REAL_ANS=0 ;;
+        "2" | [Aa][Uu][Tt][Oo] | [Pp][Rr][Oo][Mm][Pp][Tt]) REAL_ANS=2 ;;
+        *) _usage 3 "Invalid argument: \`${ANS}\`" ;;
+    esac
+    return 0
 }
 
 while getopts "$OPTIONS" OPTION; do
     case "$OPTION" in
+        C)
+            _toggle_var_check "${OPTARG}"
+            CLEAN_SCRIPT="${REAL_ANS}"
+            _not_in_selected "clear" && SELECTED+=("clear")
+            ;;
+        P)
+            _toggle_var_check "${OPTARG}"
+            WITH_PYTHON="${REAL_ANS}"
+            _not_in_selected "python" && SELECTED+=("python")
+            ;;
+        R)
+            _toggle_var_check "${OPTARG}"
+            REWRITE_README="${REAL_ANS}"
+            _not_in_selected "readme" && SELECTED+=("readme")
+            ;;
+        L)
+            _toggle_var_check "${OPTARG}"
+            REPLACE_LICENSE="${REAL_ANS}"
+            _not_in_selected "license" && SELECTED+=("license")
+            ;;
+        H)
+            _toggle_var_check "${OPTARG}"
+            WITH_HEALTH="${REAL_ANS}"
+            _not_in_selected "health" && SELECTED+=("health")
+            ;;
+        s)
+            _toggle_var_check "${OPTARG}"
+            WITH_STYLUA="${REAL_ANS}"
+            _not_in_selected "stylua" && SELECTED+=("stylua")
+            ;;
+        S)
+            _toggle_var_check "${OPTARG}"
+            WITH_SELENE="${REAL_ANS}"
+            _not_in_selected "selene" && SELECTED+=("selene")
+            ;;
+        c)
+            _toggle_var_check "${OPTARG}"
+            WITH_CI="${REAL_ANS}"
+            _not_in_selected "ci" && SELECTED+=("ci")
+            ;;
+        T)
+            _toggle_var_check "${OPTARG}"
+            WITH_TESTS="${REAL_ANS}"
+            _not_in_selected "tests" && SELECTED+=("tests")
+            ;;
+        N)
+            PLUGIN_NAME="${OPTARG}"
+            ASK_NAME=0
+            _not_in_selected "readme" && SELECTED+=("readme")
+            ;;
+        D)
+            PLUGIN_DESCRIPTION="${OPTARG}"
+            ASK_DESCRIPTION=0
+            _not_in_selected "readme" && SELECTED+=("readme")
+            ;;
+        I)
+            INDENTATION="${OPTARG}"
+            _not_in_selected "indentation" && SELECTED+=("indentation")
+            ;;
+        t)
+            TAB_SIZE="${OPTARG}"
+            _not_in_selected "indentation" && SELECTED+=("indentation")
+            ;;
+        o) ONLY_SELECTED=1 ;;
         v) VERBOSE=1 ;;
         h) _usage 0 ;;
         :) _usage 1 "Missing argument for option \`${OPTION}\`" ;;
         ?) _usage 1 "Invalid option!" ;;
-        *) _usage 1 ;;
+        *) _usage 1 "Invalid args!" ;;
     esac
 done
 
-_main
+[[ $ONLY_SELECTED -eq 0 ]] && SELECTED=()
+
+_main || _die 1
+_die 0
 
 # vim: set ts=4 sts=4 sw=4 et ai si sta:
