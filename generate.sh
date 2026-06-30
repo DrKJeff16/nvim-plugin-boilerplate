@@ -288,14 +288,14 @@ _select_indentation() {
         done < <(find lua -type f -regex '.*\.lua$' -print0)
     fi
 
-    if _file_rw_not_empty './stylua.toml'; then
-        if grep -E '^indent_type\s+=\s+.*$' ./stylua.toml &> /dev/null; then
-            sed -i "s/^indent_type\\s\\+=\\s.*$/indent_type = \"${DATA}\"/g" ./stylua.toml || return 1
+    if _file_rw_not_empty './.stylua.toml'; then
+        if grep -E '^indent_type\s+=\s+.*$' ./.stylua.toml &> /dev/null; then
+            sed -i "s/^indent_type\\s\\+=\\s.*$/indent_type = \"${DATA}\"/g" ./.stylua.toml || return 1
         else
             local F_DATA=()
-            IFS=$'\n' F_DATA=($(cat ./stylua.toml))
-            printf "%s\n" "indent_type = \"${DATA}\"" >| ./stylua.toml
-            printf "%s\n" "${F_DATA[@]}" >> ./stylua.toml
+            IFS=$'\n' F_DATA=($(cat ./.stylua.toml))
+            printf "%s\n" "indent_type = \"${DATA}\"" >| ./.stylua.toml
+            printf "%s\n" "${F_DATA[@]}" >> ./.stylua.toml
 
             unset F_DATA
         fi
@@ -318,14 +318,14 @@ _select_indentation() {
         sed -i "s/^--\\svim:\\sset\\sts=[1-9]\\+[0-9]*\\ssts=[1-9]\\+[0-9]*\\ssw=[1-9]\\+[0-9]*/-- vim: set ts=${DATA} sts=${DATA} sw=${DATA}/g" "${file}" || return 1
     done < <(find lua -type f -regex '.*\.lua$' -print0)
 
-    if _file_rw_not_empty './stylua.toml'; then
-        if grep -E '^indent_width\s+=\s+.*$' ./stylua.toml &> /dev/null; then
-            sed -i "s/^indent_width\\s\\+=\\s.*$/indent_width = ${DATA}/g" ./stylua.toml || return 1
+    if _file_rw_not_empty './.stylua.toml'; then
+        if grep -E '^indent_width\s+=\s+.*$' ./.stylua.toml &> /dev/null; then
+            sed -i "s/^indent_width\\s\\+=\\s.*$/indent_width = ${DATA}/g" ./.stylua.toml || return 1
         else
             local F_DATA=()
-            IFS=$'\n' F_DATA=($(cat ./stylua.toml))
-            printf "%s\n" "indent_width = ${DATA}" >| ./stylua.toml
-            printf "%s\n" "${F_DATA[@]}" >> ./stylua.toml
+            IFS=$'\n' F_DATA=($(cat ./.stylua.toml))
+            printf "%s\n" "indent_width = ${DATA}" >| ./.stylua.toml
+            printf "%s\n" "${F_DATA[@]}" >> ./.stylua.toml
 
             unset F_DATA
         fi
@@ -351,14 +351,14 @@ _select_line_size() {
         break
     done
 
-    if _file_rw_not_empty './stylua.toml'; then
-        if grep -E '^column_width\s+=\s+.*$' ./stylua.toml &> /dev/null; then
-            sed -i "s/^column_width\\s\\+=\\s.*$/column_width = ${LINE_SIZE}/g" ./stylua.toml || return 1
+    if _file_rw_not_empty './.stylua.toml'; then
+        if grep -E '^column_width\s+=\s+.*$' ./.stylua.toml &> /dev/null; then
+            sed -i "s/^column_width\\s\\+=\\s.*$/column_width = ${LINE_SIZE}/g" ./.stylua.toml || return 1
         else
             local F_DATA=()
-            IFS=$'\n' F_DATA=($(cat ./stylua.toml))
-            printf "%s\n" "column_width = ${LINE_SIZE}" >| ./stylua.toml
-            printf "%s\n" "${F_DATA[@]}" >> ./stylua.toml
+            IFS=$'\n' F_DATA=($(cat ./.stylua.toml))
+            printf "%s\n" "column_width = ${LINE_SIZE}" >| ./.stylua.toml
+            printf "%s\n" "${F_DATA[@]}" >> ./.stylua.toml
 
             unset F_DATA
         fi
@@ -371,9 +371,9 @@ _remove_stylua() {
     if ! _yn "Remove StyLua config? [y/N]: " 1 "N"; then
         return 0
     fi
-    if _file_readable_writeable "./stylua.toml"; then
-        _verbose_print "Removing \`stylua.toml\`..." ""
-        _verbose_rm ./stylua.toml || return 1
+    if _file_readable_writeable "./.stylua.toml"; then
+        _verbose_print "Removing \`.stylua.toml\`..." ""
+        _verbose_rm ./.stylua.toml || return 1
     fi
     if _file_readable_writeable "./.github/workflows/stylua.yml"; then
         _verbose_print "Removing \`.github/workflows/stylua.yml\`..." ""
@@ -389,7 +389,7 @@ _remove_selene() {
     fi
     if _file_readable_writeable "./selene.toml"; then
         _verbose_print "Removing \`selene.toml\`..." ""
-        _verbose_rm ./stylua.toml || return 1
+        _verbose_rm ./.stylua.toml || return 1
     fi
     if _file_readable_writeable "./vim.yml"; then
         _verbose_print "Removing \`vim.yml\`..." ""
