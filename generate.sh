@@ -14,11 +14,14 @@ PLUGIN_DESCRIPTION=""
 INDENTATION=""
 TAB_SIZE=""
 
-OPTIONS=":hvos:t:c:C:R:P:L:N:D:T:H:S:I:"
+OPTIONS=":hvoa:s:t:c:C:R:P:L:N:D:T:H:S:I:l:m:"
 VERBOSE=0
 ONLY_SELECTED=0
 ASK_NAME=1
+ASK_LINE_SIZE=1
 ASK_DESCRIPTION=1
+ASK_MODULE=1
+ASK_ANNOTATION=1
 SELECTED=()
 
 REAL_ANS=2 # Intermediate variable, to store values when calling `_toggle_var_check`
@@ -180,11 +183,19 @@ _usage() {
         "                           Selecting \`auto\` will use a prompt"
         "                           (default: auto)"
         ""
+        "    -a <ANNOTATION_PREFIX> Manually set the annotation prefix"
+        "                           for LuaLS annotations"
+        ""
         "    -c <auto|yes|no>       Whether to keep the CI components."
         "                           Selecting \`auto\` will use a prompt"
         "                           (default: auto)"
         ""
-        "    -c <auto|yes|no>       Whether to keep the StyLua configuration."
+        "    -l <LINE_SIZE>         Manually set the line size for Lua files"
+        ""
+        "    -m <MODULE_NAME>       Manually set the name of the module,"
+        "                           the one located in \`lua/<MODULE_NAME>/\`"
+        ""
+        "    -s <auto|yes|no>       Whether to keep the StyLua configuration."
         "                           Selecting \`auto\` will use a prompt"
         "                           (default: auto)"
         ""
@@ -269,7 +280,7 @@ _yn() {
 
 # Prompt to rename this module's files
 _rename_module() {
-    if [[ -d ./lua/my-plugin ]] && _file_readable_writeable "./lua/my-plugin.lua"; then
+    if [[ $ASK_MODULE -eq 1 ]] && [[ -d ./lua/my-plugin ]] && _file_readable_writeable "./lua/my-plugin.lua"; then
         while true; do
             _prompt_data "Rename your plugin module (previously: \`my-plugin\`): " 0
             if [[ $DATA =~ ^[a-zA-Z_][a-zA-Z0-9_\-]*[a-zA-Z0-9_]$ ]]; then
@@ -279,9 +290,10 @@ _rename_module() {
         done
 
         MODULE_NAME="${DATA}"
-        mv ./lua/my-plugin "./lua/${MODULE_NAME}" || return 1
-        mv ./lua/my-plugin.lua "./lua/${MODULE_NAME}.lua" || return 1
     fi
+
+    mv ./lua/my-plugin "./lua/${MODULE_NAME}" || return 1
+    mv ./lua/my-plugin.lua "./lua/${MODULE_NAME}.lua" || return 1
     if [[ -d ./rplugin/python3 ]] && _file_readable_writeable "./rplugin/python3/my-plugin.py"; then
         mv ./rplugin/python3/my-plugin.py "./rplugin/python3/${MODULE_NAME}.py" || return 1
     fi
@@ -293,16 +305,19 @@ _rename_module() {
 
 # Prompt to rename annotation classes
 _rename_annotations() {
-    local IFS
-    while true; do
-        _prompt_data "Rename your module class annotations (previously: \`MyPlugin\`): " 0
-        if [[ $DATA =~ ^[a-zA-Z][a-zA-Z0-9_\.]*[a-zA-Z0-9_]$ ]]; then
-            break
-        fi
-        _error "Invalid module name: \`${DATA}\`" "Try again..."
-    done
+    if [[ $ASK_ANNOTATION -eq 1 ]]; then
+        local IFS
+        while true; do
+            _prompt_data "Rename your module class annotations (previously: \`MyPlugin\`): " 0
+            if [[ $DATA =~ ^[a-zA-Z][a-zA-Z0-9_\.]*[a-zA-Z0-9_]$ ]]; then
+                break
+            fi
+            _error "Invalid module name: \`${DATA}\`" "Try again..."
+        done
 
-    ANNOTATION_PREFIX="${DATA}"
+        ANNOTATION_PREFIX="${DATA}"
+    fi
+
     while IFS= read -r -d '' file; do
         sed -i "s/MyPlugin/${ANNOTATION_PREFIX}/g" "${file}" || return 1
     done < <(find lua -type f -regex '.*\.lua$' -print0)
@@ -429,21 +444,23 @@ _select_indentation() {
 
 # Prompt to select the maximum line size for Lua files
 _select_line_size() {
-    local IFS
-    DATA=""
-    while true; do
-        _prompt_data "Select your line size (default: 120): " 1
-        if [[ -n "$DATA" ]]; then
-            if [[ $DATA =~ ^[1-9][0-9]*$ ]]; then
-                LINE_SIZE="${DATA}"
-                break
+    if [[ $ASK_LINE_SIZE -eq 1 ]]; then
+        local IFS
+        DATA=""
+        while true; do
+            _prompt_data "Select your line size (default: 120): " 1
+            if [[ -n "$DATA" ]]; then
+                if [[ $DATA =~ ^[1-9][0-9]*$ ]]; then
+                    LINE_SIZE="${DATA}"
+                    break
+                fi
+                continue
             fi
-            continue
-        fi
 
-        LINE_SIZE="100"
-        break
-    done
+            LINE_SIZE="100"
+            break
+        done
+    fi
 
     local TARGET_FILE=""
     if _file_rw_not_empty ./'.stylua.toml'; then
@@ -582,10 +599,10 @@ _remove_script() {
             ;;
         "1") : ;;
         "2")
-            ! _yn "Self-destruct this script? [Y/n]: " 1 "Y" \
-                && _error "" "This script will need to be deleted manually!" \
-                && return 0
-
+            if ! _yn "Self-destruct this script? [Y/n]: " 1 "Y"; then
+                _error "" "This script will need to be deleted manually!"
+                return 0
+            fi
             ;;
     esac
 
@@ -728,11 +745,18 @@ _not_in_selected() {
 
 # Execute the script
 _main() {
-    _rename_module || _die 1 "Couldn't rename module file structure!"
-    _rename_annotations || _die 1 "Couldn't rename module annotations!"
+    if [[ $ONLY_SELECTED -eq 0 ]] || [[ $ONLY_SELECTED -eq 1 ]] && ! _not_in_selected "rename"; then
+        _rename_module || _die 1 "Couldn't rename module file structure!"
+    fi
+    if [[ $ONLY_SELECTED -eq 0 ]] || [[ $ONLY_SELECTED -eq 1 ]] && ! _not_in_selected "annotate"; then
+        _rename_annotations || _die 1 "Couldn't rename module annotations!"
+    fi
 
     if [[ $ONLY_SELECTED -eq 0 ]] || [[ $ONLY_SELECTED -eq 1 ]] && ! _not_in_selected "indentation"; then
         _select_indentation || _die 1 "Unable to set indentation!"
+    fi
+
+    if [[ $ONLY_SELECTED -eq 0 ]] || [[ $ONLY_SELECTED -eq 1 ]] && ! _not_in_selected "line-size"; then
         _select_line_size || _die 1 "Unable to set StyLua line size!"
     fi
 
@@ -836,10 +860,25 @@ while getopts "$OPTIONS" OPTION; do
             WITH_TESTS="${REAL_ANS}"
             _not_in_selected "tests" && SELECTED+=("tests")
             ;;
+        a)
+            ANNOTATION_PREFIX="${OPTARG}"
+            ASK_ANNOTATION=0
+            _not_in_selected "annotate" && SELECTED+=("annotate")
+            ;;
         c)
             _toggle_var_check "${OPTARG}"
             WITH_CI="${REAL_ANS}"
             _not_in_selected "ci" && SELECTED+=("ci")
+            ;;
+        l)
+            LINE_SIZE="${OPTARG}"
+            ASK_LINE_SIZE=0
+            _not_in_selected "line-size" && SELECTED+=("line-size")
+            ;;
+        m)
+            MODULE_NAME="${OPTARG}"
+            ASK_MODULE=0
+            _not_in_selected "rename" && SELECTED+=("rename")
             ;;
         s)
             _toggle_var_check "${OPTARG}"
