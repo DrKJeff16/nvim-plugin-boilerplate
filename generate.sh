@@ -798,8 +798,8 @@ _main() {
 }
 
 _toggle_var_check() {
-    REAL_ANS=2
     local ANS="$1"
+    REAL_ANS=2
     case "$ANS" in
         [Nn] | [Nn][Oo]) REAL_ANS=0 ;;
         [Yy] | [Yy][Ee][Ss]) REAL_ANS=0 ;;
@@ -898,7 +898,11 @@ while getopts "$OPTIONS" OPTION; do
     esac
 done
 
-[[ $ONLY_SELECTED -eq 0 ]] && SELECTED=()
+if [[ $ONLY_SELECTED -eq 0 ]]; then
+    SELECTED=()
+elif [[ $ONLY_SELECTED -eq 1 ]] && [[ ${#SELECTED[@]} -eq 0 ]]; then
+    _die 1 "No selected operations!"
+fi
 
 _main || _die 1
 _die 0
