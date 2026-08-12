@@ -49,10 +49,10 @@ _error() {
 
 # Only print text if verbose mode is On
 _verbose_print() {
-    [[ $VERBOSE -eq 0 ]] && return 0
-
-    local TXT=("$@")
-    printf "%s\n" "${TXT[@]}"
+    if [[ $VERBOSE -eq 1 ]]; then
+        local TXT=("$@")
+        printf "%s\n" "${TXT[@]}"
+    fi
     return 0
 }
 
@@ -133,73 +133,75 @@ _usage() {
         shift
     fi
     if [[ $# -ge 1 ]]; then
-        TXT+=("$@")
-        TXT+=("")
+        TXT+=("$@" "")
     fi
 
     TXT+=(
         "generate.sh - Generator script for \`nvim-plugin-boilerplate\`"
         ""
-        "Usage: generate.sh [-h] [-v] [-C <auto|yes|no>]"
+        "Usage: generate.sh [-h] [-v] [-o] [-C <auto|yes|no>] [-D <DESCRIPTION>] [-H <auto|yes|no>]"
+        "                                  [-I <spaces|tabs>] [-L <auto|yes|no>] [-N <PLUGIN_NAME>]"
+        "                                  [-P <auto|yes|no>] [-R <auto|yes|no>] [-T <auto|yes|no>]"
+        "                                  [-a <ANNOTATION_PREFIX>] [-c <auto|yes|no>] [-l <LINE_SIZE>]"
+        "                                  [-m <MODULE_NAME>] [-s <auto|yes|no>] [-t <TAB_SIZE>]"
         ""
-        "    -h                     Print this help message with success exit code"
-        "    -v                     Enables verbose mode"
-        ""
-        "    -o                     Whether to ONLY run the specified operations"
-        "                           (listed below)"
+        "        -h                                 Print this help message with success exit code"
+        "        -v                                 Enables verbose mode"
+        "        -o                                 Whether to ONLY run the specified operations"
+        "                                           (listed below)"
         ""
         "  OPERATIONS"
         "  =========="
         ""
-        "    -C <auto|yes|no>       Whether to clear the script at the end of execution."
-        "                           Selecting \`auto\` will use a prompt"
-        "                           (default: auto)"
+        "        -C <auto|yes|no>                   Whether to clear the script at the end of execution."
+        "                                           Selecting \`auto\` will use a prompt"
+        "                                           (default: auto)"
         ""
-        "    -D <DESCRIPTION>       Manually set the description for the README."
-        "                           Will automatically set \`-R\` to \`yes\`"
+        "        -D <DESCRIPTION>                   Manually set the description for the README."
+        "                                           Will automatically set \`-R\` to \`yes\`"
         ""
-        "    -H <auto|yes|no>       Whether to keep the checkhealth (\`health.lua\`)."
-        "                           Selecting \`auto\` will use a prompt"
-        "                           (default: auto)"
+        "        -H <auto|yes|no>                   Whether to keep the checkhealth (\`health.lua\`)."
+        "                                           Selecting \`auto\` will use a prompt"
+        "                                           (default: auto)"
         ""
-        "    -I <spaces|tabs>       Manually set the indentation type"
+        "        -I <spaces|tabs>                   Manually set the indentation type"
         ""
-        "    -L <auto|yes|no>       Whether to replace the plugin's license."
-        "                           Selecting \`auto\` will use a prompt"
-        "                           (default: auto)"
+        "        -L <auto|yes|no>                   Whether to replace the plugin's license."
+        "                                           Selecting \`auto\` will use a prompt"
+        "                                           (default: auto)"
         ""
-        "    -N <PLUGIN_NAME>       Manually set the plugin name for the README."
-        "                           Will automatically set \`-R\` to \`yes\`"
+        "        -N <PLUGIN_NAME>                   Manually set the plugin name for the README."
+        "                                           Will automatically set \`-R\` to \`yes\`"
         ""
-        "    -P <auto|yes|no>       Whether to keep the Python component."
-        "                           Selecting \`auto\` will use a prompt"
-        "                           (default: auto)"
+        "        -P <auto|yes|no>                   Whether to keep the Python component."
+        "                                           Selecting \`auto\` will use a prompt"
+        "                                           (default: auto)"
         ""
-        "    -R <auto|yes|no>       Whether to rewrite the README."
-        "                           Selecting \`auto\` will use a prompt"
-        "                           (default: auto)"
+        "        -R <auto|yes|no>                   Whether to rewrite the README."
+        "                                           Selecting \`auto\` will use a prompt"
+        "                                           (default: auto)"
         ""
-        "    -T <auto|yes|no>       Whether to keep the tests component."
-        "                           Selecting \`auto\` will use a prompt"
-        "                           (default: auto)"
+        "        -T <auto|yes|no>                   Whether to keep the tests component."
+        "                                           Selecting \`auto\` will use a prompt"
+        "                                           (default: auto)"
         ""
-        "    -a <ANNOTATION_PREFIX> Manually set the annotation prefix"
-        "                           for LuaLS annotations"
+        "        -a <ANNOTATION_PREFIX>             Manually set the annotation prefix"
+        "                                           for LuaLS annotations"
         ""
-        "    -c <auto|yes|no>       Whether to keep the CI components."
-        "                           Selecting \`auto\` will use a prompt"
-        "                           (default: auto)"
+        "        -c <auto|yes|no>                   Whether to keep the CI components."
+        "                                           Selecting \`auto\` will use a prompt"
+        "                                           (default: auto)"
         ""
-        "    -l <LINE_SIZE>         Manually set the line size for Lua files"
+        "        -l <LINE_SIZE>                     Manually set the line size for Lua files"
         ""
-        "    -m <MODULE_NAME>       Manually set the name of the module,"
-        "                           the one located in \`lua/<MODULE_NAME>/\`"
+        "        -m <MODULE_NAME>                   Manually set the name of the module,"
+        "                                           the one located in \`lua/<MODULE_NAME>/\`"
         ""
-        "    -s <auto|yes|no>       Whether to keep the StyLua configuration."
-        "                           Selecting \`auto\` will use a prompt"
-        "                           (default: auto)"
+        "        -s <auto|yes|no>                   Whether to keep the StyLua configuration."
+        "                                           Selecting \`auto\` will use a prompt"
+        "                                           (default: auto)"
         ""
-        "    -t <TAB_SIZE>          Manually set the tab size"
+        "        -t <TAB_SIZE>                      Manually set the tab size"
         ""
     )
     _die "$EC" "${TXT[@]}"
@@ -901,7 +903,7 @@ done
 if [[ $ONLY_SELECTED -eq 0 ]]; then
     SELECTED=()
 elif [[ $ONLY_SELECTED -eq 1 ]] && [[ ${#SELECTED[@]} -eq 0 ]]; then
-    _die 1 "No selected operations!"
+    _usage 1 "No selected operations!"
 fi
 
 _main || _die 1
