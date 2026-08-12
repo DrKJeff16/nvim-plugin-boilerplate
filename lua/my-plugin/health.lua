@@ -6,10 +6,9 @@ function M.check()
 
   if vim.g.MyPlugin_setup == 1 then
     vim.health.ok('`my-plugin` has been setup!')
-    return
+  else
+    vim.health.error('`my-plugin` has not been setup correctly!')
   end
-
-  vim.health.error('`my-plugin` has not been setup correctly!')
 end
 
 return M

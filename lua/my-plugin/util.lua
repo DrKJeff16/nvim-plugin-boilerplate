@@ -74,11 +74,10 @@ function M.validate(T)
       table.insert(spec, 1, name)
       vim.validate(unpack(spec))
     end
-    return
+  else
+    ---@cast T table<string, vim.validate.Spec>
+    vim.validate(T)
   end
-
-  ---@cast T table<string, vim.validate.Spec>
-  vim.validate(T)
 end
 
 ---@param T table<string|integer, any>
@@ -112,13 +111,11 @@ end
 function M.reverse(T)
   M.validate({ T = { T, { 'table' } } })
 
-  if vim.tbl_isempty(T) or not vim.islist(T) then
-    return T
-  end
-
-  local len = #T
-  for i = 1, math.floor(len / 2) do
-    T[i], T[len - i + 1] = T[len - i + 1], T[i]
+  if not vim.tbl_isempty(T) and vim.islist(T) then
+    local len = #T
+    for i = 1, math.floor(len / 2) do
+      T[i], T[len - i + 1] = T[len - i + 1], T[i]
+    end
   end
   return T
 end
@@ -129,7 +126,6 @@ end
 ---@param ret? boolean Whether to return the called module
 ---@return boolean exists A boolean indicating whether the module exists or not
 ---@return unknown? module
----@overload fun(mod: string): exists: boolean
 function M.mod_exists(mod, ret)
   M.validate({
     mod = { mod, { 'string' } },
