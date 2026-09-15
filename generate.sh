@@ -151,7 +151,6 @@ _usage() {
         "                                           (listed below)"
         ""
         "  OPERATIONS"
-        "  =========="
         ""
         "        -C <auto|yes|no>                   Whether to clear the script at the end of execution."
         "                                           Selecting \`auto\` will use a prompt"
