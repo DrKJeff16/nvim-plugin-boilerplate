@@ -6,8 +6,7 @@ local M = {}
 ---@return MyPluginOpts defaults
 function M.get_defaults()
   ---@class MyPluginOpts
-  local defaults = { bar = false, debug = false, foo = true }
-  return defaults
+  return { bar = false, debug = false, foo = true }
 end
 
 local config = M.get_defaults()
@@ -20,8 +19,7 @@ end
 ---@param k string
 ---@param v any
 function M.set(k, v)
-  local default = M.get_defaults()[k]
-  if default ~= nil then
+  if M.get_defaults()[k] ~= nil then
     config[k] = v
   end
 end

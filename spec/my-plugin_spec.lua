@@ -11,25 +11,20 @@ describe('my-plugin', function()
 
   describe('setup', function()
     it('should set default configuration', function()
-      local ok = pcall(M.setup)
-      assert.is_true(ok)
+      assert.is_true((pcall(M.setup)))
     end)
 
     it('should merge user configuration with defaults', function()
-      local ok = pcall(M.setup, {})
-      assert.is_true(ok)
+      assert.is_true((pcall(M.setup, {})))
     end)
 
     it('should handle nil options', function()
-      local ok = pcall(M.setup, nil)
-      assert.is_true(ok)
+      assert.is_true((pcall(M.setup, nil)))
     end)
 
-    local params = { 1, false, '', function() end }
-    for _, param in ipairs(params) do
+    for _, param in ipairs({ 1, false, '', function() end }) do
       it(('should throw error when called with param of type %s'):format(type(param)), function()
-        local ok = pcall(M.setup, param)
-        assert.is_false(ok)
+        assert.is_false((pcall(M.setup, param)))
       end)
     end
   end)

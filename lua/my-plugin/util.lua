@@ -207,31 +207,23 @@ function M.lstrip(char, str)
     str = { str, { 'string' } },
   })
 
-  if str == '' or not vim.startswith(str, char) then
-    return str
-  end
-
-  ---@cast char string[]
-  if M.is_type('table', char) then
-    if not vim.tbl_isempty(char) then
-      for _, c in ipairs(char) do
-        str = M.lstrip(c, str)
+  local new_str = ''
+  if type(char) == 'table' then
+    for _, c in ipairs(char) do
+      str = M.lstrip(c, str)
+    end
+    new_str = str
+  else
+    local i, len, other = 1, str:len(), false
+    while i <= len + 1 do
+      if str:sub(i, i) ~= char and not other then
+        other = true
       end
+      if other then
+        new_str = ('%s%s'):format(new_str, str:sub(i, i))
+      end
+      i = i + 1
     end
-    return str
-  end
-
-  ---@cast char string
-  local i, len, new_str = 1, str:len(), ''
-  local other = false
-  while i <= len + 1 do
-    if str:sub(i, i) ~= char and not other then
-      other = true
-    end
-    if other then
-      new_str = ('%s%s'):format(new_str, str:sub(i, i))
-    end
-    i = i + 1
   end
   return new_str
 end
@@ -247,27 +239,15 @@ function M.rstrip(char, str)
     str = { str, { 'string' } },
   })
 
-  if str == '' then
-    return str
-  end
-
-  ---@cast char string[]
-  if M.is_type('table', char) then
-    if not vim.tbl_isempty(char) then
-      for _, c in ipairs(char) do
-        str = M.rstrip(c, str)
-      end
+  if type(char) == 'table' then
+    for _, c in ipairs(char) do
+      str = M.rstrip(c, str)
     end
     return str
   end
 
-  ---@cast char string
   str = str:reverse()
-
-  if not vim.startswith(str, char) then
-    return str:reverse()
-  end
-  return M.lstrip(char, str):reverse()
+  return (vim.startswith(str, char) and M.lstrip(char, str) or str):reverse()
 end
 
 ---Strip given a leading string (or list of strings) within a string, if any, bidirectionally.
@@ -281,21 +261,12 @@ function M.strip(char, str)
     str = { str, { 'string' } },
   })
 
-  if str == '' then
-    return str
-  end
-
-  ---@cast char string[]
-  if M.is_type('table', char) then
-    if not vim.tbl_isempty(char) then
-      for _, c in ipairs(char) do
-        str = M.strip(c, str)
-      end
+  if type(char) == 'table' then
+    for _, c in ipairs(char) do
+      str = M.strip(c, str)
     end
     return str
   end
-
-  ---@cast char string
   return M.rstrip(char, M.lstrip(char, str))
 end
 
