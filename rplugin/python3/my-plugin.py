@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 """Python component for ``MyPlugin``."""
-from typing import NoReturn
 
 import pynvim
 
@@ -27,8 +26,9 @@ class MyPlugin:
         self.nvim = nvim
 
     @pynvim.command("MyPluginFoo", nargs=0)
-    def foo(self) -> NoReturn:
+    def foo(self) -> None:
         """Executes the ``MyPluginFoo`` command."""
         self.nvim.out_write("Whatever\n")
+
 
 # vim: set ts=4 sts=4 sw=4 et ai si sta:
