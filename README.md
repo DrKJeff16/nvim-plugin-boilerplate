@@ -42,6 +42,13 @@ It'll invoke many prompts so that you may structure your plugin as desired.
 
 **The script will delete itself after a successful setup!**
 
+> [!NOTE]
+> You can see what arguments/options are accepted by invoking `-h`:
+>
+> ```bash
+> ./generate.sh -h
+> ```
+
 ---
 
 ## Structure
@@ -50,10 +57,10 @@ This template includes the following relevant files:
 
 ```
 generate.sh  <==  Bash script plugin template generator
-stylua.toml  <==  Config file for StyLua
+.busted  <==  Config file for busted
+.stylua.toml  <==  Config file for StyLua
 selene.toml  <==  Config file for selene
 vim.yml  <==  Std file for selene
-.busted  <==  Config file for busted
 spec/  <==  Contains all the unit tests
 └── my-plugin_spec.lua  <==  NOTE: All test files must end up with `*_spec.lua`!
 lua/
