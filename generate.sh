@@ -737,61 +737,70 @@ _remove_ci() {
 _not_in_selected() {
     [[ ${#SELECTED[@]} -eq 0 ]] && return 0
 
-    local ITEM="$1"
     for S in "${SELECTED[@]}"; do
-        [[ "${S}" == "${ITEM}" ]] && return 1
+        [[ "${S}" == "$1" ]] && return 1
     done
     return 0
 }
 
+__selected_condition() {
+    [[ $ONLY_SELECTED -eq 0 ]] && return 0
+    [[ $# -eq 0 ]] && return 1
+
+    if [[ $ONLY_SELECTED -eq 1 ]] && ! _not_in_selected "$1"; then
+        return 0
+    fi
+    return 1
+}
+
 # Execute the script
 _main() {
-    if [[ $ONLY_SELECTED -eq 0 ]] || [[ $ONLY_SELECTED -eq 1 ]] && ! _not_in_selected "rename"; then
+    if __selected_condition "rename"; then
         _rename_module || _die 1 "Couldn't rename module file structure!"
     fi
-    if [[ $ONLY_SELECTED -eq 0 ]] || [[ $ONLY_SELECTED -eq 1 ]] && ! _not_in_selected "annotate"; then
+    if __selected_condition "annotate"; then
         _rename_annotations || _die 1 "Couldn't rename module annotations!"
     fi
 
-    if [[ $ONLY_SELECTED -eq 0 ]] || [[ $ONLY_SELECTED -eq 1 ]] && ! _not_in_selected "indentation"; then
+    if __selected_condition "indentation"; then
         _select_indentation || _die 1 "Unable to set indentation!"
     fi
 
-    if [[ $ONLY_SELECTED -eq 0 ]] || [[ $ONLY_SELECTED -eq 1 ]] && ! _not_in_selected "line-size"; then
+    if __selected_condition "line-size"; then
         _select_line_size || _die 1 "Unable to set StyLua line size!"
     fi
 
-    if [[ $ONLY_SELECTED -eq 0 ]] || [[ $ONLY_SELECTED -eq 1 ]] && ! _not_in_selected "tests"; then
+    if __selected_condition "tests"; then
         _remove_tests || _die 1 "Unable to (not) remove tests!"
     fi
 
-    if [[ $ONLY_SELECTED -eq 0 ]] || [[ $ONLY_SELECTED -eq 1 ]] && ! _not_in_selected "health"; then
+    if __selected_condition "health"; then
         _remove_health_file || _die 1 "Unable to (not) remove health file!"
     fi
 
-    if [[ $ONLY_SELECTED -eq 0 ]] || [[ $ONLY_SELECTED -eq 1 ]] && ! _not_in_selected "python"; then
+    if __selected_condition "python"; then
         _remove_python_component || _die 1 "Unable to (not) remove Python component!"
     fi
 
-    if [[ $ONLY_SELECTED -eq 0 ]] || [[ $ONLY_SELECTED -eq 1 ]] && ! _not_in_selected "stylua"; then
+    if __selected_condition "stylua"; then
         _remove_stylua || _die 1 "Unable to (not) remove StyLua config!"
     fi
-    if [[ $ONLY_SELECTED -eq 0 ]] || [[ $ONLY_SELECTED -eq 1 ]] && ! _not_in_selected "selene"; then
+    if __selected_condition "selene"; then
         _remove_selene || _die 1 "Unable to (not) remove selene config!"
     fi
 
-    if [[ $ONLY_SELECTED -eq 0 ]] || [[ $ONLY_SELECTED -eq 1 ]] && ! _not_in_selected "license"; then
+    if __selected_condition "license"; then
         _replace_license || _die 1 "Unable to replace license!"
     fi
-    if [[ $ONLY_SELECTED -eq 0 ]] || [[ $ONLY_SELECTED -eq 1 ]] && ! _not_in_selected "ci"; then
+    if __selected_condition "ci"; then
         _remove_ci || _die 1 "Unable to remove useless CI components!"
     fi
 
-    if [[ $ONLY_SELECTED -eq 0 ]] || [[ $ONLY_SELECTED -eq 1 ]] && ! _not_in_selected "readme"; then
+    if __selected_condition "readme"; then
         _rewrite_readme || _die 1 "Unable to rewrite \`README.md\`!"
     fi
 
-    if [[ $ONLY_SELECTED -eq 0 ]] || [[ $ONLY_SELECTED -eq 1 ]] && ! _not_in_selected "clear"; then
+    if __selected_condition "clear"; then
         _remove_script || _die 1 "Unable to (not) remove this script!"
     fi
 
