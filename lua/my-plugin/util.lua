@@ -265,9 +265,20 @@ function M.strip(char, str)
     for _, c in ipairs(char) do
       str = M.strip(c, str)
     end
-    return str
+  else
+    str = M.rstrip(char, M.lstrip(char, str))
   end
-  return M.rstrip(char, M.lstrip(char, str))
+  return str
+end
+
+---@generic V
+---@param t table
+---@param k string|integer
+---@param v V
+---@return V v
+function M.rawset(t, k, v)
+  rawset(t, k, v)
+  return v
 end
 
 return M
